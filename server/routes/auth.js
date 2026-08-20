@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const cookieSignature = require('cookie-signature');
 const pool = require('../db');
 
 const router = express.Router();
@@ -36,8 +37,12 @@ router.post('/login', async (req, res, next) => {
       // Vercel's Node runtime here (confirmed: session/cookie data is all
       // correct, but no Set-Cookie ever reaches the response) -- set it
       // directly and synchronously instead, using the sessionID we already
-      // have, with the same options as the session() config in index.js.
-      res.cookie(process.env.SESSION_COOKIE_NAME || 'connect.sid', req.sessionID, {
+      // have. The value must be signed exactly like express-session signs
+      // it ("s:<id>.<hmac>") -- a raw/unsigned id is silently rejected as
+      // untrusted on the next request, which looked like the login "worked"
+      // but every following request came back logged-out.
+      const signedSessionId = 's:' + cookieSignature.sign(req.sessionID, process.env.SESSION_SECRET);
+      res.cookie(process.env.SESSION_COOKIE_NAME || 'connect.sid', signedSessionId, {
         httpOnly: true,
         sameSite: 'lax',
         secure: Boolean(process.env.VERCEL),
