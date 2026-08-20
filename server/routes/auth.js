@@ -21,7 +21,18 @@ router.post('/login', async (req, res, next) => {
     req.session.username = user.username;
     await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
 
-    res.json({ username: user.username, full_name: user.full_name });
+    // express-session normally saves the session silently via a res.end hook --
+    // a failed save (e.g. the Postgres session store rejecting the write) would
+    // otherwise be invisible, still returning 200 with no cookie ever set. Save
+    // explicitly so a real error surfaces instead of a silent, confusing login
+    // that doesn't actually log anyone in.
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        console.error('session save failed:', saveErr);
+        return next(saveErr);
+      }
+      res.json({ username: user.username, full_name: user.full_name });
+    });
   } catch (err) {
     next(err);
   }
