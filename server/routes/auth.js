@@ -31,12 +31,18 @@ router.post('/login', async (req, res, next) => {
         console.error('session save failed:', saveErr);
         return next(saveErr);
       }
-      // TEMPORARY diagnostic -- remove once the missing Set-Cookie is
-      // explained. Logs what Express actually attempted to send, and
-      // what express-session believes about this session/cookie.
-      res.on('finish', () => {
-        console.log('login response headers:', JSON.stringify(res.getHeaders()));
-        console.log('sessionID:', req.sessionID, 'cookie opts:', JSON.stringify(req.session.cookie));
+      // express-session normally sets Set-Cookie via a deferred on-headers
+      // hook right as the response flushes. That hook does not fire under
+      // Vercel's Node runtime here (confirmed: session/cookie data is all
+      // correct, but no Set-Cookie ever reaches the response) -- set it
+      // directly and synchronously instead, using the sessionID we already
+      // have, with the same options as the session() config in index.js.
+      res.cookie(process.env.SESSION_COOKIE_NAME || 'connect.sid', req.sessionID, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: Boolean(process.env.VERCEL),
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        path: '/',
       });
       res.json({ username: user.username, full_name: user.full_name });
     });
