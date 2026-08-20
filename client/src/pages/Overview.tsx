@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectSummary, useProjectKpis } from '../hooks/useProjectData';
+import { API_BASE } from '../lib/api';
 import { useCostBreakdown, useCostTrend, useAlerts, useRetentionSummary, useVatSummary, useTopSuppliers } from '../hooks/useDashboardAnalytics';
 import { KpiCards } from '../components/KpiCards';
 import { BudgetTable } from '../components/BudgetTable';
@@ -90,7 +91,7 @@ export function Overview() {
       {error && (
         <p className="text-[15px] text-danger">
           Couldn't reach the API ({error.message}). Confirm the server is running at{' '}
-          {import.meta.env.VITE_API_URL || 'http://localhost:4000'}.
+          {API_BASE || 'this site’s own domain'}.
         </p>
       )}
 

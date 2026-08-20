@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { postJson } from '../lib/api';
+import { API_BASE, postJson } from '../lib/api';
 import type { AuthUser } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 const ME_QUERY_KEY = ['auth', 'me'];
 
 // A 401 here means "logged out", not a failed request -- resolve to null
