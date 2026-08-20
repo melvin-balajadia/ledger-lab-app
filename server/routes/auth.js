@@ -31,6 +31,13 @@ router.post('/login', async (req, res, next) => {
         console.error('session save failed:', saveErr);
         return next(saveErr);
       }
+      // TEMPORARY diagnostic -- remove once the missing Set-Cookie is
+      // explained. Logs what Express actually attempted to send, and
+      // what express-session believes about this session/cookie.
+      res.on('finish', () => {
+        console.log('login response headers:', JSON.stringify(res.getHeaders()));
+        console.log('sessionID:', req.sessionID, 'cookie opts:', JSON.stringify(req.session.cookie));
+      });
       res.json({ username: user.username, full_name: user.full_name });
     });
   } catch (err) {
