@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+// Falls back to '' (same-origin, relative /api/... requests) when unset --
+// correct for Vercel, where vercel.json serves the client and API from one
+// domain. Local dev overrides this via client/.env's VITE_API_URL, since dev
+// runs Vite and Express as two separate processes on different ports.
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', ...init });
