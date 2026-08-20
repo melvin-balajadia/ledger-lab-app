@@ -318,10 +318,11 @@ writes to a local `backups/` folder — neither exists in a serverless environme
 it's MySQL-specific anyway. Rather than remove the route outright (which would also
 remove it from the real Windows deployment, where it's the actual safety net), it's
 mounted conditionally in `server/index.js`: `if (!process.env.VERCEL) { app.use('/api/backup', ...) }`.
-On Vercel the route simply doesn't exist; the client's "Backup now" button will 404 if
-clicked there — hide it behind `site.config.ts` if you want it gone from the UI too.
-Supabase takes its own automatic backups (**Database → Backups** in the dashboard)
-either way.
+On Vercel the route simply doesn't exist; the client's "Backup now" button (in
+`Layout.tsx`, via `BackupButton.tsx`) will 404 if clicked there — remove that button
+from `Layout.tsx` if you want it gone from the UI too, it's not wired to any config
+flag. Supabase takes its own automatic backups (**Database → Backups** in the
+dashboard) either way.
 
 ### 3.7 Serverless entrypoint  ✅ done
 
@@ -338,7 +339,7 @@ automatically by the platform — nothing to configure.
 
 ## 4. Vercel — project setup
 
-### 4.1 Repo layout Vercel needs
+### 4.1 Repo layout Vercel needs  ✅ done
 
 Add one new file at the **repo root**, `api/index.js`:
 
