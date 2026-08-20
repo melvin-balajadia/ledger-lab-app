@@ -9,6 +9,20 @@ const { requireAuth } = require('./middleware/requireAuth');
 const app = express();
 app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
 app.use(express.json());
+
+// Vercel defaults un-cache-controlled function responses to
+// "Cache-Control: public, max-age=0, must-revalidate" and strips Set-Cookie
+// from anything that looks publicly cacheable, to stop one user's session
+// cookie ending up in a shared edge cache. Every /api response here is a
+// per-user, session-bearing response and must never be cached -- without
+// this, login silently "succeeds" with no cookie ever reaching the browser.
+if (process.env.VERCEL) {
+  app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+}
+
 app.use(
   session({
     // Serverless functions have no shared memory between invocations, so the
