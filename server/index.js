@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { requireAuth } = require('./middleware/requireAuth');
-const { resolveProject } = require('./middleware/resolveProject');
+const { resolveProject, attachProjectId } = require('./middleware/resolveProject');
 
 const app = express();
 app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
@@ -33,8 +33,8 @@ app.use('/api/projects', requireAuth, resolveProject, require('./routes/wbs'));
 app.use('/api/projects', requireAuth, resolveProject, require('./routes/payroll'));
 app.use('/api/projects', requireAuth, resolveProject, require('./routes/workers'));
 app.use('/api/projects', requireAuth, resolveProject, require('./routes/alerts'));
-app.use('/api/suppliers', requireAuth, resolveProject, require('./routes/suppliers'));
-app.use('/api/meta', requireAuth, resolveProject, require('./routes/meta'));
+app.use('/api/suppliers', requireAuth, attachProjectId, require('./routes/suppliers'));
+app.use('/api/meta', requireAuth, attachProjectId, require('./routes/meta'));
 
 if (!process.env.VERCEL) {
   const path = require('path');
