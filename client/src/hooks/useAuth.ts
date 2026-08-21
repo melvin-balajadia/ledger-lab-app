@@ -31,7 +31,15 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export async function signInWithGoogle() {
-  const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+  // Without an explicit redirectTo, Supabase falls back to its single
+  // global "Site URL" setting -- fine for one environment, wrong the
+  // moment this app runs anywhere else (localhost during dev, the
+  // deployed domain in production). Redirect back to wherever the user
+  // actually started the flow from instead.
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  });
   if (error) throw new Error(error.message);
 }
 
