@@ -2,12 +2,6 @@ import { Link } from "react-router-dom";
 import { buttonVariants } from "../components/Button";
 import { IconCheck } from "../components/icons";
 
-// Same ledger-paper flourish as Login.tsx/Signup.tsx -- see the comment there.
-const LEDGER_BACKGROUND = {
-  backgroundImage:
-    "repeating-linear-gradient(to bottom, transparent, transparent 31px, var(--color-rule) 31px, var(--color-rule) 32px)",
-};
-
 // A handful of custom animations no Tailwind utility expresses cleanly.
 // Kept local to this page rather than added to index.css -- nothing else
 // in the app uses them, and they're presentational flourishes, not part
@@ -200,9 +194,17 @@ function Nav() {
           LedgerLab
         </span>
         <div className="flex items-center gap-3">
-          <Link to="/login" className={buttonVariants.outline}>
-            Sign in
-          </Link>
+          {/* Two nav buttons plus the wordmark are tight below 640px; "Sign in"
+              stays reachable via the footer/close-CTA links, so it's the one
+              to drop here. A wrapper (not the Link's own class string) toggles
+              visibility, since Button's variant string already carries an
+              unconditional `inline-flex` that a same-string `hidden` would
+              race against at the same specificity. */}
+          <span className="hidden sm:inline-block">
+            <Link to="/login" className={buttonVariants.outline}>
+              Sign in
+            </Link>
+          </span>
           <Link to="/signup" className={buttonVariants.primary}>
             Get started
           </Link>
@@ -250,12 +252,15 @@ function Hero() {
             {STALE_FILES.map((file, i) => (
               <div
                 key={file.name}
-                className="home-anim flex items-center gap-3 rounded-md border border-rule bg-surface px-4 py-3 shadow-card"
+                // The staggered stacked-pile look only has room to breathe at
+                // sm+; on a narrow phone it would just eat into the space the
+                // truncated file name needs, so it's flush there instead.
+                className={`home-anim flex items-center gap-3 rounded-md border border-rule bg-surface px-4 py-3 shadow-card ${
+                  i === 1 ? "sm:ml-4" : i === 2 ? "sm:ml-8" : ""
+                } ${i === 0 ? "sm:mr-6" : ""}`}
                 style={{
                   animation: "home-drift-in .5s cubic-bezier(.22,.7,.3,1) both",
                   animationDelay: `${i * 90}ms`,
-                  marginLeft: i === 1 ? "1rem" : i === 2 ? "2rem" : 0,
-                  marginRight: i === 0 ? "1.5rem" : 0,
                 }}
               >
                 <span
@@ -296,15 +301,15 @@ function Hero() {
               </span>
             </div>
             <div className="grid grid-cols-3 divide-x divide-rule">
-              <div className="p-4">
+              <div className="p-3 sm:p-4">
                 <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">Budget</p>
                 <p className="text-sm font-semibold text-ink">Approved</p>
               </div>
-              <div className="p-4">
+              <div className="p-3 sm:p-4">
                 <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">Committed</p>
                 <p className="text-sm font-semibold text-ink">Awarded</p>
               </div>
-              <div className="p-4">
+              <div className="p-3 sm:p-4">
                 <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">Disbursed</p>
                 <p className="text-sm font-semibold text-ink">Paid out</p>
               </div>
@@ -632,7 +637,7 @@ function Footer() {
 
 export function Home() {
   return (
-    <div className="min-h-screen bg-canvas" style={LEDGER_BACKGROUND}>
+    <div className="min-h-screen bg-canvas">
       <style>{HOME_KEYFRAMES}</style>
       <Nav />
       <main>
