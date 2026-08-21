@@ -679,7 +679,7 @@ LEFT JOIN (SELECT planning_line_id, SUM(amount) amt FROM payroll_entries
 
 INSERT INTO projects (code, name, company, location, tin, total_budget, vat_inclusive, status)
 VALUES
- ('DEMO', 'Sample Cold Storage Expansion', 'Sample Logistics Corp.',
+ ('DEMO', 'Demo Project', 'Demo Company',
   'Sample City, Philippines', NULL, 150000000.00, 1, 'active');
 
 INSERT INTO budget_items

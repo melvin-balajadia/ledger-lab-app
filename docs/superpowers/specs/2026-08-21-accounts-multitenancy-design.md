@@ -102,9 +102,14 @@ a foreign currency... do not build FX features unless asked") and out of scope h
 
 This closes cross-account access at the app layer without needing every route rewritten —
 it's one middleware change plus removing the now-redundant `requireAuth` cookie check.
-Row-Level Security policies mirroring the same `owner_id`/`project_id` scoping are added as
-defense-in-depth (Supabase's own recommended practice for multi-tenant apps), but the
-middleware is the layer everything actually depends on day to day.
+Row-Level Security policies mirroring the same `owner_id`/`project_id` scoping were
+considered as defense-in-depth (Supabase's own recommended practice for multi-tenant apps)
+but are **not implemented**: the app connects to Postgres as a single privileged role, so
+RLS would first require propagating each request's JWT/role down to the connection — a
+deliberately out-of-scope piece of work. The app-layer middleware
+(`resolveProject`/`attachProjectId`) is therefore the *only* enforcement layer today, and
+any future route or handler must go through it rather than trusting the database to catch a
+cross-account read.
 
 ## Client changes
 
