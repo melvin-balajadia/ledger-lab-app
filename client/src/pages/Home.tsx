@@ -18,7 +18,7 @@ const HOME_KEYFRAMES = `
 
 const STALE_FILES = [
   { name: "project_costs_FINAL_v4.xlsx", flag: "Stale" },
-  { name: "PO_tracker (Ana's copy).xlsx", flag: "Conflict" },
+  { name: "PO_tracker_revised.xlsx", flag: "Conflict" },
   { name: "payroll_JUL_rev2.xlsx", flag: "Offline" },
 ];
 
