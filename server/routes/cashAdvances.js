@@ -43,7 +43,7 @@ async function assertPlanningLinesBelongToProject(conn, projectId, planningLineI
   const ids = [...new Set(planningLineIds.filter((id) => id != null))];
   if (ids.length === 0) return null;
   const { rows } = await conn.query(
-    'SELECT id FROM planning_lines WHERE project_id = ? AND id IN (?)',
+    'SELECT id FROM planning_lines WHERE project_id = ? AND id = ANY(?)',
     [projectId, ids]
   );
   if (rows.length !== ids.length) {
@@ -58,7 +58,7 @@ async function assertPlanningLinesBelongToProject(conn, projectId, planningLineI
 async function assertPlanningLinesActive(conn, planningLineIds) {
   const ids = [...new Set(planningLineIds.filter((id) => id != null))];
   if (ids.length === 0) return null;
-  const { rows } = await conn.query('SELECT id FROM planning_lines WHERE id IN (?) AND is_active = 0', [ids]);
+  const { rows } = await conn.query('SELECT id FROM planning_lines WHERE id = ANY(?) AND is_active = 0', [ids]);
   if (rows.length > 0) {
     return 'One or more JPL/WBS codes are inactive and cannot be used for new entries.';
   }
@@ -95,7 +95,7 @@ router.get('/:id/cash-advances', async (req, res, next) => {
       const planningLineIds = await resolvePlanningLineIdsWithDescendants(
         pool, projectId, req.query.planning_line_id
       );
-      where.push('r.planning_line_id IN (?)');
+      where.push('r.planning_line_id = ANY(?)');
       params.push(planningLineIds);
     }
     if (req.query.date_from) {
@@ -262,7 +262,7 @@ router.post('/:id/cash-advances', async (req, res, next) => {
     }
 
     await conn.commit();
-    const { rows } = await pool.query('SELECT * FROM cash_advances WHERE id IN (?)', [insertedIds]);
+    const { rows } = await pool.query('SELECT * FROM cash_advances WHERE id = ANY(?)', [insertedIds]);
     res.status(201).json(rows);
   } catch (err) {
     await conn.rollback();

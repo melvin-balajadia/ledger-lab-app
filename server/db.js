@@ -16,6 +16,13 @@ types.setTypeParser(1082, (val) => val);
 // renumbering is genuinely error-prone -- translate `?` to `$N` once, here,
 // for every query issued through this pool or a connection from it. Route
 // code everywhere else keeps writing `?`, unchanged.
+//
+// One thing this translation deliberately does NOT do is mysql2's array
+// expansion: mysql2 turned `IN (?)` with an array param into `IN (1,2,3)`,
+// while `pg` binds the array as a single Postgres array value, so `IN ($1)`
+// fails with `invalid input syntax for type integer: "{"1","2"}"`. Write
+// `= ANY(?)` instead -- pg binds an array to it natively and it means exactly
+// the same thing. Never `IN (?)`.
 function toPgSql(text) {
   let n = 0;
   return text.replace(/\?/g, () => `$${++n}`);
