@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
+import { Setup } from './pages/Setup';
 import { Overview } from './pages/Overview';
 import { Replenishments } from './pages/Replenishments';
 import { PurchaseOrders } from './pages/PurchaseOrders';
@@ -19,6 +20,7 @@ function App() {
     <Routes>
       <Route path="login" element={<Login />} />
       <Route element={<ProtectedRoute />}>
+        <Route path="setup" element={<Setup />} />
         <Route element={<Layout />}>
           <Route index element={<Overview />} />
           <Route path="replenishments" element={<Replenishments />} />
