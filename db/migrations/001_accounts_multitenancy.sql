@@ -1,6 +1,11 @@
 -- db/migrations/001_accounts_multitenancy.sql
 -- Run this against the same Supabase Postgres project that already holds
 -- the demo data (loaded from db/schema.postgres.sql). Not a fresh-DB script.
+--
+-- A fresh environment does NOT need this file: db/schema.postgres.sql now
+-- creates owner_id/project_id columns directly. This migration exists only
+-- to document (and replay, if ever needed) how an already-running instance
+-- from before the accounts/multi-tenancy pivot was upgraded in place.
 
 ALTER TABLE projects ADD COLUMN owner_id UUID;
 UPDATE projects SET owner_id = '<DEMO_USER_UUID>' WHERE id = 1;

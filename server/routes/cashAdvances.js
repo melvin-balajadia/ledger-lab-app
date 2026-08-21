@@ -52,6 +52,19 @@ async function assertPlanningLinesBelongToProject(conn, projectId, planningLineI
   return null;
 }
 
+// Same story for budget_item_id: it's a caller-supplied FK with no ON
+// DELETE restriction crossing project lines, so an id from another
+// project would otherwise attach that project's budget item to this row.
+async function assertBudgetItemsBelongToProject(conn, projectId, budgetItemIds) {
+  const ids = [...new Set(budgetItemIds.filter((id) => id != null))];
+  if (ids.length === 0) return null;
+  const { rows } = await conn.query('SELECT id FROM budget_items WHERE project_id = ? AND id = ANY(?)', [projectId, ids]);
+  if (rows.length !== ids.length) {
+    return 'one or more budget_item_id values do not belong to this project';
+  }
+  return null;
+}
+
 // Only enforced when a planning_line_id is newly being set/changed -- an
 // existing row that already cites a since-deactivated code must stay
 // editable for its other fields (never invalidate history).
@@ -228,6 +241,11 @@ router.post('/:id/cash-advances', async (req, res, next) => {
       await conn.rollback();
       return res.status(400).json({ error: activeErr });
     }
+    const budgetItemErr = await assertBudgetItemsBelongToProject(conn, projectId, lines.map((l) => l.budget_item_id));
+    if (budgetItemErr) {
+      await conn.rollback();
+      return res.status(400).json({ error: budgetItemErr });
+    }
 
     const insertedIds = [];
     for (const line of lines) {
@@ -319,6 +337,14 @@ router.patch('/:id/cash-advances/:caId', async (req, res, next) => {
       if (activeErr) {
         await conn.rollback();
         return res.status(400).json({ error: activeErr });
+      }
+    }
+
+    if (req.body.budget_item_id !== undefined) {
+      const budgetItemErr = await assertBudgetItemsBelongToProject(conn, before.project_id, [merged.budget_item_id]);
+      if (budgetItemErr) {
+        await conn.rollback();
+        return res.status(400).json({ error: budgetItemErr });
       }
     }
 

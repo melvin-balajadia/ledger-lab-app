@@ -41,7 +41,7 @@ DROP TABLE IF EXISTS
   timekeeping_detail, payroll_entries, payroll_periods, workers,
   weekly_budget_additions, remaining_cost_lines, remaining_cost_estimates,
   purchase_order_attachments, po_payments, purchase_orders, replenishments, cash_advances,
-  additional_payments, budget_revisions, audit_log, users, po_payment_terms,
+  additional_payments, budget_revisions, audit_log, po_payment_terms,
   planning_lines, budget_items, suppliers, fx_rates, projects
   CASCADE;
 
@@ -60,6 +60,15 @@ $$ LANGUAGE plpgsql;
 
 CREATE TABLE projects (
   id            SERIAL PRIMARY KEY,
+  -- One project per Supabase Auth account (server/routes/createProject.js
+  -- enforces this at insert time; the UNIQUE constraint backs it at the DB
+  -- level too). No FK to auth.users -- that table lives in Supabase's own
+  -- schema, not this one. The seed project below is the sole exception: it
+  -- has no real owner and is served read-only to anonymous callers by
+  -- requireAuth.js's PUBLIC_DEMO_PROJECT_ID carve-out, which never queries
+  -- owner_id for that path -- so its value here is just a valid, unique
+  -- placeholder, not a real account.
+  owner_id      UUID         NOT NULL UNIQUE,
   code          VARCHAR(32)  NOT NULL UNIQUE,
   name          VARCHAR(160) NOT NULL,
   company       VARCHAR(160) NOT NULL,
@@ -88,6 +97,7 @@ CREATE TABLE fx_rates (
 
 CREATE TABLE suppliers (
   id            SERIAL PRIMARY KEY,
+  project_id    INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   name          VARCHAR(191) NOT NULL,
   normalized_name VARCHAR(191) NOT NULL,
   tin           VARCHAR(32)  NULL,
@@ -100,6 +110,7 @@ CREATE TABLE suppliers (
   CONSTRAINT uk_supplier_norm UNIQUE (normalized_name)
 );
 CREATE INDEX ix_supplier_name ON suppliers (name);
+CREATE INDEX ix_supplier_project ON suppliers (project_id);
 CREATE TRIGGER trg_suppliers_updated_at BEFORE UPDATE ON suppliers
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -364,21 +375,7 @@ CREATE TABLE budget_revisions (
 CREATE INDEX ix_rev_date ON budget_revisions (effective_on);
 
 -- ---------------------------------------------------------------------
--- 3d. Users — single local user, per accounting
--- ---------------------------------------------------------------------
-
-CREATE TABLE users (
-  id            SERIAL PRIMARY KEY,
-  username      VARCHAR(64)  NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  full_name     VARCHAR(160) NULL,
-  last_login_at TIMESTAMP NULL,
-  is_active     SMALLINT NOT NULL DEFAULT 1,
-  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ---------------------------------------------------------------------
--- 3e. Audit log
+-- 3d. Audit log
 -- ---------------------------------------------------------------------
 
 CREATE TABLE audit_log (
@@ -416,6 +413,7 @@ CREATE TRIGGER trg_payroll_periods_updated_at BEFORE UPDATE ON payroll_periods
 
 CREATE TABLE workers (
   id            SERIAL PRIMARY KEY,
+  project_id    INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   employee_no   VARCHAR(32)  NULL,
   last_name     VARCHAR(80)  NOT NULL,
   first_name    VARCHAR(80)  NOT NULL,
@@ -433,6 +431,7 @@ CREATE TABLE workers (
 );
 CREATE INDEX ix_worker_name ON workers (full_name);
 CREATE INDEX ix_worker_position ON workers (position);
+CREATE INDEX ix_worker_project ON workers (project_id);
 CREATE TRIGGER trg_workers_updated_at BEFORE UPDATE ON workers
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -677,9 +676,12 @@ LEFT JOIN (SELECT planning_line_id, SUM(amount) amt FROM payroll_entries
 -- DEPLOY_VERCEL_SUPABASE.md) — password hashes don't belong in a SQL
 -- file that might get committed.
 
-INSERT INTO projects (code, name, company, location, tin, total_budget, vat_inclusive, status)
+-- The nil UUID marks "no real owner" for the one public demo project --
+-- see the comment on projects.owner_id above. It's never looked up for
+-- the anonymous read-only path, only present to satisfy NOT NULL UNIQUE.
+INSERT INTO projects (owner_id, code, name, company, location, tin, total_budget, vat_inclusive, status)
 VALUES
- ('DEMO', 'Demo Project', 'Demo Company',
+ ('00000000-0000-0000-0000-000000000000', 'DEMO', 'Demo Project', 'Demo Company',
   'Sample City, Philippines', NULL, 150000000.00, 1, 'active');
 
 INSERT INTO budget_items
@@ -692,9 +694,9 @@ VALUES
  (1,'5.0', 50,'Office Equipment & Fixtures', 6000000,  6000000,  5100000.00,'for_bidding',NULL),
  (1,'6.0', 60,'Contingency / Other Expenses',19000000, 19000000,         0.00,'other',NULL);
 
-INSERT INTO suppliers (name, normalized_name, category, is_active) VALUES
- ('Sample Hardware Supply Co.', 'SAMPLE HARDWARE SUPPLY CO.', 'hardware', 1),
- ('Sample Steel & Concrete Inc.', 'SAMPLE STEEL & CONCRETE INC.', 'concrete', 1);
+INSERT INTO suppliers (project_id, name, normalized_name, category, is_active) VALUES
+ (1, 'Sample Hardware Supply Co.', 'SAMPLE HARDWARE SUPPLY CO.', 'hardware', 1),
+ (1, 'Sample Steel & Concrete Inc.', 'SAMPLE STEEL & CONCRETE INC.', 'concrete', 1);
 
 INSERT INTO planning_lines (project_id, budget_item_id, code, depth, description, is_active) VALUES
  (1, 2, '2.1', 2, NULL, 1),

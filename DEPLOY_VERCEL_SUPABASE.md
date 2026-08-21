@@ -2,13 +2,21 @@
 
 This is a **separate, sanitized deployment** for showing the app in a portfolio, not
 the accountant's real instance. It uses Postgres (Supabase) instead of MySQL, contains
-zero real business data, and has exactly one demo login. `DEPLOYMENT.md` (the
-Windows/MySQL/real-data setup) is untouched and still describes the real deployment.
+zero real business data, and is multi-tenant — anyone can sign up and gets their own
+empty project, no shared login. `DEPLOYMENT.md` (the Windows/MySQL/real-data setup) is
+untouched and still describes the real deployment.
 
-**Decision this doc assumes**, confirmed up front: migrate the schema and queries from
-MySQL to Postgres so the stack is genuinely "Vercel + Supabase," rather than hosting
-MySQL somewhere else. That's real migration work, not just an upload — this doc is
-long because that work has several sharp edges.
+**Decisions this doc assumes**, confirmed up front:
+1. Migrate the schema and queries from MySQL to Postgres so the stack is genuinely
+   "Vercel + Supabase," rather than hosting MySQL somewhere else.
+2. Use **Supabase Auth** (email/password + Google OAuth) instead of the real
+   deployment's single hardcoded local account, so the portfolio build works for
+   anyone who visits it — each account gets exactly one project, created through a
+   setup wizard, starting empty. There is also one public, read-only, credential-free
+   `/demo` project for browsing without signing up at all.
+
+That's real migration and redesign work, not just an upload — this doc is long
+because both changes have several sharp edges.
 
 ## 0. What changes and why
 
@@ -16,7 +24,8 @@ long because that work has several sharp edges.
 |---|---|---|
 | Database | MySQL 8, `mysql2` | **Postgres, `pg`** (Supabase) |
 | Data | Real figures (`db/rcsni_cost_clean_*.sql`) | **Fictional demo data only** — `db/schema.postgres.sql` |
-| Auth | 1 real user, `express-session` + MemoryStore | **1 demo user**, session store backed by Postgres (serverless has no shared memory between invocations) |
+| Auth | 1 real user, `express-session` + MemoryStore | **Supabase Auth** (email/password + Google), one project per account, JWT Bearer tokens — no server-side sessions at all |
+| Multi-tenancy | One project, implicit | **Real multi-tenancy** — `projects.owner_id`, a setup wizard for new accounts, and a public read-only `/demo` project needing no login |
 | File uploads (PO attachments) | `multer` → local disk | **Disabled, or swapped to Supabase Storage** (serverless has no persistent disk) |
 | "Backup now" button | `mysqldump.exe` on the local machine | **Removed** — not meaningful in this environment; Supabase backs up the DB itself |
 | Process model | One Express process, `app.listen()` | **Serverless function** per request (Vercel) |
@@ -43,11 +52,12 @@ application logic, not MySQL-specific. Only the plumbing underneath changes.
   build — it existed so multiple real client instances (Plaridel, Villasis) could each
   set their own `PROJECT_ID`/branding from one shared codebase, which doesn't apply
   here: this is one general-purpose portfolio showcase, not a per-site deployment.
-  `PROJECT_ID = 1` (the fictional `DEMO` project from `schema.postgres.sql`) is now a
-  plain hardcoded constant in `client/src/hooks/useProjectData.ts`, and the branding
-  string ("Sample Logistics Corp. — Cost & Payroll Monitor") is inlined directly in
-  `Login.tsx`/`Layout.tsx`/`main.tsx`. `site.config.ts`, `site.config.example.ts`, and
-  the corresponding `.gitignore` entry are gone.
+  `site.config.ts`, `site.config.example.ts`, and the corresponding `.gitignore` entry
+  are gone. There is no longer a single hardcoded `PROJECT_ID` at all — each account's
+  project id comes from `projects.owner_id` (`client/src/hooks/useProjectData.ts`'s
+  `useCurrentProject()`), and the one id-1 exception (the seeded `DEMO` project) is
+  reached only through the dedicated `/demo` route and its own `DemoProjectContext`,
+  not a global default.
 - Skim `README.md` for anything naming the real company/location — genericize before
   making the repo public, if it isn't already.
 - One cosmetic leftover in shared UI code: `client/src/components/AdditionalPaymentForm.tsx`
@@ -57,19 +67,38 @@ application logic, not MySQL-specific. Only the plumbing underneath changes.
 
 ---
 
-## 2. Supabase — create the project and load the schema
+## 2. Supabase — create the project, load the schema, configure Auth
 
 1. Sign up / log in at supabase.com, **New Project**. Pick a region close to where
    Vercel will run your functions (matters for latency, not correctness).
 2. Set a strong database password when prompted — save it, you'll need it for the
    connection string.
 3. Once provisioned, go to **SQL Editor** → **New query**, paste the entire contents
-   of `db/schema.postgres.sql`, and run it. This creates all 20 tables, the trigger
-   function, all 11 views, and the small demo seed — nothing else.
-4. Create the one demo user (see §4.2 below for the converted script) — do this after
-   the server code changes are in place, since the script needs a working Postgres
-   connection.
-5. Find the connection strings via the **Connect** button near the top of the
+   of `db/schema.postgres.sql`, and run it. This creates all 20 tables (including the
+   multi-tenancy columns — `projects.owner_id`, `suppliers.project_id`,
+   `workers.project_id`), the trigger function, all 11 views, and the small public
+   demo seed (project id 1) — nothing else.
+4. **Authentication → Providers**: Email is on by default. To also enable **Google**:
+   create an OAuth client in Google Cloud Console (APIs & Services → Credentials →
+   Create Credentials → OAuth client ID, type "Web application"), add the callback
+   URL Supabase shows on this page as an Authorized redirect URI in Google Cloud, then
+   paste the resulting Client ID and Client Secret into Supabase's Google provider
+   settings and enable it.
+5. **Authentication → URL Configuration** — set both of these, not just one:
+   - **Site URL**: your production URL (e.g. `https://your-app.vercel.app`). This is
+     the fallback Supabase uses only when no `redirectTo` is passed to
+     `signInWithOAuth`.
+   - **Redirect URLs**: add every origin the app will actually run from —
+     `http://localhost:5173` (or whatever port `npm run dev` uses) for local
+     development, and your production URL again. `client/src/hooks/useAuth.ts`'s
+     `signInWithGoogle()` passes `redirectTo: window.location.origin` explicitly so
+     Google sign-in returns to wherever the flow started — but Supabase silently
+     ignores a `redirectTo` that isn't in this allow-list and falls back to Site URL
+     instead, which is a confusing failure mode (see §6).
+   - Free-tier Supabase rate-limits its own outgoing confirmation emails. For local
+     testing, confirm test accounts manually instead: **Authentication → Users** →
+     select the user → confirm.
+6. Find the connection strings via the **Connect** button near the top of the
    dashboard (newer Supabase UIs moved it out of Project Settings). You need **two**
    of these:
    - **Transaction pooler** (port `6543`) — use this as `DATABASE_URL` for the
@@ -77,12 +106,16 @@ application logic, not MySQL-specific. Only the plumbing underneath changes.
      straight to Postgres exhausts its connection limit almost immediately under any
      real traffic. The pooler (PgBouncer/Supavisor) exists exactly for this.
    - **Session pooler** (port `5432`, hostname like `aws-0-<region>.pooler.supabase.com`)
-     — use this for one-off local scripts (like creating the demo user) run from your
-     own machine. **Do not use the "Direct connection" string** (`db.<ref>.supabase.co`)
-     for this — that hostname is IPv6-only, and most home/office networks can't resolve
-     it, which fails with `Error: getaddrinfo ENOTFOUND db.<ref>.supabase.co`. The
-     Session pooler behaves like a direct connection (no transaction-pooling quirks)
-     but resolves over regular IPv4.
+     — use this for one-off local scripts run from your own machine. **Do not use the
+     "Direct connection" string** (`db.<ref>.supabase.co`) for this — that hostname is
+     IPv6-only, and most home/office networks can't resolve it, which fails with
+     `Error: getaddrinfo ENOTFOUND db.<ref>.supabase.co`. The Session pooler behaves
+     like a direct connection (no transaction-pooling quirks) but resolves over
+     regular IPv4.
+7. **Project Settings → API** — copy the **Project URL**, the **anon/public key**, and
+   the **service_role key**. You'll need all three in §4.3. The service_role key
+   bypasses every access control and must never reach the client bundle or a public
+   repo — it's server-only (`SUPABASE_SERVICE_ROLE_KEY`).
 
 ---
 
@@ -220,72 +253,38 @@ gotchas (`DATE_SUB`/`WEEKDAY` and the stray `ER_DUP_ENTRY` string code) surfaced
 that pass precisely because each file got focused attention rather than a single blind
 find-and-replace across all of them.
 
-### 3.3 `server/scripts/create-user.js` — your one demo login  ✅ done
+### 3.3 Auth — Supabase Auth replaces sessions entirely  ✅ done
 
-```js
-// MySQL's ON DUPLICATE KEY UPDATE -> Postgres's ON CONFLICT ... DO UPDATE
-await pool.query(
-  `INSERT INTO users (username, password_hash, full_name)
-   VALUES ($1, $2, $3)
-   ON CONFLICT (username) DO UPDATE
-     SET password_hash = EXCLUDED.password_hash, full_name = EXCLUDED.full_name`,
-  [username, hash, fullName || null]
-);
-```
+The real deployment's single hardcoded account, `express-session`, and
+`connect-pg-simple` are gone from this build — not adapted, removed. There is no
+`users` table and no server-side session state of any kind.
 
-Run this once, from your own machine, against the **Session pooler** connection string
-(§2.5) — set it as `DATABASE_URL` in `server/.env`, then
-`node scripts/create-user.js demo <a-real-password>`.
-This is the one user CLAUDE.md's design already calls for — don't add a signup flow or
-a second user; the schema and `requireAuth` already assume exactly one active account
-at a time.
+- **Server side** (`server/middleware/requireAuth.js`): every `/api/*` request (other
+  than anonymous GETs to the public demo project, see below) must carry
+  `Authorization: Bearer <access_token>`. The middleware verifies it via
+  `supabaseAdmin.auth.getUser(token)` — a live call to Supabase, not local JWT
+  verification — and attaches `req.user = { id, email }`. `supabaseAdmin` is a
+  Supabase client constructed with the **service_role key**, never the anon key.
+- **Client side** (`client/src/hooks/useAuth.ts`, `client/src/lib/supabaseClient.ts`):
+  a Supabase client constructed with the **anon key** handles sign-up, sign-in, and
+  Google OAuth directly against Supabase — the Express server is never in this loop.
+  `client/src/lib/api.ts`'s `authHeaders()` attaches the current session's access
+  token to every API call.
+- **Multi-tenancy** (`server/middleware/resolveProject.js`): each account owns exactly
+  one project (`projects.owner_id`, enforced both by a UNIQUE constraint and by
+  `server/routes/createProject.js` rejecting a second project for the same account).
+  A brand-new account has no project yet — the API returns `404 { needsSetup: true }`,
+  which the client (`client/src/pages/Setup.tsx`) turns into the setup wizard.
+- **Public demo** (`requireAuth.js`'s `PUBLIC_DEMO_PROJECT_ID = 1`): an unauthenticated
+  `GET` to that one project's routes is allowed and read-only; anything else (no
+  token and not a GET, or not project 1) is `401`. This is the `DEMO` project seeded
+  by `db/schema.postgres.sql` — don't repoint this constant at a different id without
+  also moving the seed data, since they're assumed to be the same project.
 
-### 3.4 Session store — serverless has no shared memory  ✅ done
-
-`express-session`'s default `MemoryStore` (what's running today) keeps sessions in the
-Node process's RAM. On Vercel, each request can hit a **different, short-lived**
-function instance — a session set on one invocation isn't guaranteed to exist on the
-next, so logins would randomly fail. Point the store at Postgres instead:
-
-```bash
-cd server && npm install connect-pg-simple
-```
-
-```js
-// server/index.js
-const pgSession = require('connect-pg-simple')(session);
-const pool = require('./db');
-
-app.use(
-  session({
-    store: new pgSession({ pool, createTableIfMissing: true }),
-    name: process.env.SESSION_COOKIE_NAME || 'connect.sid',
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    rolling: true,
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      // NOT `NODE_ENV === 'production'` -- the real Windows deployment sets
-      // NODE_ENV=production too (DEPLOYMENT.md step 7) while still serving
-      // plain HTTP, and a `secure` cookie is silently dropped over HTTP,
-      // which would break login there. `VERCEL` is set automatically by
-      // that platform only, so this can't affect the real deployment.
-      secure: Boolean(process.env.VERCEL),
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    },
-  })
-);
-```
-
-`createTableIfMissing: true` creates its own `session` table on first run — no manual
-migration needed. This is the smallest change that keeps `requireAuth.js` and every
-route's `req.session.userId` / `req.session.username` working exactly as-is.
-
-Because `secure` only turns on under Vercel, testing this locally against Supabase still
-works over plain `http://localhost` — the cookie just won't be marked secure until it's
-actually deployed.
+Nothing here needs a one-off script run from your machine — every account,
+including the very first one, is created by visiting the deployed site and signing
+up or signing in with Google. The only manual Supabase-side step is the Auth
+configuration in §2.4–2.5 (providers, Site URL, Redirect URLs).
 
 ### 3.5 File uploads (PO attachments) — disabled on Vercel  ✅ done
 
@@ -355,16 +354,19 @@ And a `vercel.json` at the repo root:
   "outputDirectory": "client/dist",
   "installCommand": "cd server && npm install && cd ../client && npm install",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api" }
+    { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
 ```
 
-This tells Vercel: build the Vite client as the static site, and route every
+This tells Vercel three things: build the Vite client as the static site, route every
 `/api/*` request to the `api/index.js` function (which is just the existing Express
-app). Vercel forwards the *original* request path to the function, so Express's own
-`app.use('/api/auth', ...)`-style route mounts still match correctly — nothing in the
-route definitions themselves needs to change for this.
+app), and fall back to `index.html` for everything else so a hard refresh on a client
+route like `/replenishments` doesn't 404 (a plain static host has no knowledge of
+React Router's client-side routes). Vercel forwards the *original* request path to the
+function, so Express's own `app.use('/api/projects', ...)`-style route mounts still
+match correctly — nothing in the route definitions themselves needs to change for this.
 
 ### 4.2 Import the project
 
@@ -383,59 +385,83 @@ route definitions themselves needs to change for this.
 Set these in **Project Settings → Environment Variables** (Production, and Preview if
 you want PR previews to work too):
 
-| Variable | Value |
-|---|---|
-| `DATABASE_URL` | Supabase **pooler** connection string (§2.5) |
-| `SESSION_SECRET` | A long random string — generate one, don't reuse the local `.env` value |
-| `SESSION_COOKIE_NAME` | e.g. `portfolio-demo.sid` |
-| `CLIENT_ORIGIN` | Your Vercel deployment URL, e.g. `https://your-app.vercel.app` — since client and API share the same origin under this `vercel.json` setup, CORS barely matters, but `cors()` in `index.js` still reads this var |
+| Variable | Where used | Value |
+|---|---|---|
+| `DATABASE_URL` | server | Supabase **pooler** connection string (§2.6) |
+| `SUPABASE_URL` | server | Project URL from §2.7 |
+| `SUPABASE_SERVICE_ROLE_KEY` | server | service_role key from §2.7 — **never** prefix this one with `VITE_`, that would ship it to the browser |
+| `CLIENT_ORIGIN` | server | Your Vercel deployment URL, e.g. `https://your-app.vercel.app` — since client and API share the same origin under this `vercel.json` setup, CORS barely matters, but `cors()` in `index.js` still reads this var |
+| `VITE_SUPABASE_URL` | client (build-time) | Same Project URL as `SUPABASE_URL` |
+| `VITE_SUPABASE_ANON_KEY` | client (build-time) | anon/public key from §2.7 — safe to expose, it's designed to be public and is constrained by Supabase's own row-level policies and this app's own `requireAuth`/`resolveProject` checks |
+| `VITE_API_URL` | client (build-time) | Leave unset/empty — the client's `API_BASE` (`client/src/lib/api.ts`) defaults to `''` (same-origin), which is correct under this single-domain `vercel.json` setup. Only set it if the API is genuinely hosted on a different origin. |
 
-Do **not** set `PORT` — Vercel manages that for serverless functions.
+Any `VITE_*` variable is baked into the static bundle at build time, not read at
+request time — changing one requires a redeploy, not just a restart.
+
+Do **not** set `PORT` — Vercel manages that for serverless functions. Do **not** set
+`SESSION_SECRET` / `SESSION_COOKIE_NAME` — there is no session store in this build.
 
 ### 4.4 Deploy
 
 Click **Deploy**. Once it finishes:
 
-1. Run the demo-user script from your machine against the Supabase **direct**
-   connection string (§3.3) if you haven't already.
-2. Visit the deployment URL, log in with the demo credentials, confirm the dashboard
-   (`v_budget_vs_actual` data) renders using the fictional seed numbers.
-3. Check the browser's Network tab for `/api/...` calls succeeding (not 404/500) and
-   the session cookie actually being set (Application tab → Cookies).
+1. Visit the deployment URL. Sign up with email/password (confirm via the email link,
+   subject to Supabase's free-tier rate limit — see §2.5) or sign in with Google.
+2. Confirm the setup wizard appears for the brand-new account, create a project
+   through it, and confirm the dashboard (`v_budget_vs_actual` data) renders — empty,
+   since a new account starts with no data.
+3. Visit `/demo` in an incognito window (no login) and confirm the fictional seed data
+   renders read-only.
+4. Check the browser's Network tab for `/api/...` calls succeeding (not 404/500) and
+   carrying an `Authorization: Bearer ...` header once signed in.
 
 ---
 
 ## 5. Order of operations, start to finish
 
-1. `db/schema.postgres.sql` already exists — load it into Supabase (§2).
+1. `db/schema.postgres.sql` already exists — load it into Supabase (§2.3), then
+   configure Auth providers and URL Configuration (§2.4–2.5).
 2. Convert `server/db.js`, then one route file at a time (§3.1–3.2), running each
    against Supabase locally (point your local `.env`'s `DATABASE_URL` at the Supabase
-   **direct** connection string for this) before moving to the next file. This is the
-   long part — 17 files, but mechanical once the pattern clicks.
-3. Swap the session store (§3.4), disable backup + decide on attachments (§3.5–3.6).
-4. Add the dual local/serverless entrypoint (§3.7).
-5. Create the demo user (§3.3).
+   **Session pooler** connection string for this) before moving to the next file.
+   This is the long part — 17 files, but mechanical once the pattern clicks.
+3. Wire up Supabase Auth end to end (§3.3): server-side token verification, the
+   client's sign-up/sign-in/Google flows, and the multi-tenancy middleware.
+4. Disable backup + decide on attachments (§3.5–3.6).
+5. Add the dual local/serverless entrypoint (§3.7).
 6. Add `api/index.js` + `vercel.json` (§4.1), push to GitHub, import into Vercel,
    set env vars, deploy (§4.2–4.4).
-7. Smoke-test the live URL end to end: login, dashboard, one write action (e.g. add a
-   budget revision) to confirm the Postgres write path and the audit log both work.
+7. Smoke-test the live URL end to end: sign-up, setup wizard, `/demo`, one write action
+   (e.g. add a budget revision) to confirm the Postgres write path and the audit log
+   both work, and — with two separate test accounts — that neither can see the other's
+   data.
 
 ## 6. Things that will bite you if skipped
 
+- **Google sign-in redirects to `localhost:3000` (or Supabase's default placeholder)
+  in production, sometimes with a token visibly sitting in the URL fragment.** This
+  happens when the target origin isn't in **Redirect URLs** (§2.5) — Supabase silently
+  falls back to **Site URL** instead of erroring, so the failure looks like a code bug
+  rather than a config gap. Fix: add the exact origin (including the deployed domain,
+  not just localhost) to Redirect URLs, and confirm Site URL itself isn't still the
+  Supabase-generated placeholder.
 - Using the **Direct connection** string (`db.<ref>.supabase.co`) for anything run from
   your own machine — it's IPv6-only and fails with `Error: getaddrinfo ENOTFOUND
   db.<ref>.supabase.co` on most home/office networks. Use the **Session pooler** string
-  instead for local scripts (§2.5) — hit this while testing `create-user.js`.
+  instead for local scripts and local dev (§2.6).
 - Forgetting `ssl: { rejectUnauthorized: false }` in `server/db.js` — Supabase refuses
   plain connections.
 - Using the **direct** (5432) connection string in `DATABASE_URL` on Vercel instead of
   the **pooler** (6543) one — works fine in testing, then intermittently fails under
   any concurrent traffic once connections pile up.
-- Keying the session cookie's `secure` flag off `NODE_ENV` instead of `VERCEL` — the
-  real Windows deployment also sets `NODE_ENV=production` (per `DEPLOYMENT.md`) while
-  serving plain HTTP, so an `NODE_ENV`-keyed `secure` flag would silently break login
-  there. `server/index.js` keys it off `process.env.VERCEL` specifically to avoid this.
+- A stale `CLIENT_ORIGIN` (e.g. left pointing at production while testing locally, or
+  vice versa) causes CORS to silently reject every request from the actual client
+  origin — this tends to show up as a runaway retry loop on `/api/me` and a blank
+  white screen, not an obvious CORS error in the console.
 - Missing `RETURNING id` on any `INSERT` whose result feeds a later query (audit log,
   child-row creation, the `res.status(201).json(...)` response) — `result.rows[0]` is
   `undefined` instead of throwing, so this fails silently as a `NULL` reference deeper
   in the code rather than at the insert itself.
+- Never echo `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, or a live Supabase access/
+  refresh token anywhere they might be logged, pasted, or committed — all three grant
+  broad access and none of them are meant to be user-facing.
