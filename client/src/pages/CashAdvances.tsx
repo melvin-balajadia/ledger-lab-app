@@ -3,7 +3,7 @@ import { fetchJson } from "../lib/api";
 import { toPageMeta } from "../lib/dataTablePage";
 import { formatMoney } from "../lib/formatMoney";
 import { budgetItemKeyAndLabel, groupByBudgetItem } from "../lib/budgetItemGrouping";
-import { PROJECT_ID } from "../hooks/useProjectData";
+import { useCurrentProject } from "../hooks/useProjectData";
 import {
   useRestoreCashAdvance,
   useVoidedCashAdvances,
@@ -112,6 +112,7 @@ const columns: ColumnDef<CashAdvance>[] = [
 ];
 
 export function CashAdvances() {
+  const { projectId } = useCurrentProject();
   const [needsReviewOnly, setNeedsReviewOnly] = useState<"all" | "flagged">(
     "all",
   );
@@ -129,6 +130,9 @@ export function CashAdvances() {
 
   const fetchData = useCallback(
     async (fetchParams: FetchParams) => {
+      if (projectId === undefined) {
+        return { data: [], meta: { page: 1, perPage: fetchParams.perPage, total: 0, totalPages: 1 } };
+      }
       const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
       syncToUrl(fetchParams);
       const params = new URLSearchParams();
@@ -147,13 +151,13 @@ export function CashAdvances() {
       if (filters.date_to) params.set("date_to", filters.date_to);
 
       const json = await fetchJson<CashAdvanceListResponse>(
-        `/api/projects/${PROJECT_ID}/cash-advances?${params}`,
+        `/api/projects/${projectId}/cash-advances?${params}`,
         { signal },
       );
       setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, needsReviewOnly, syncToUrl],
+    [filters, needsReviewOnly, syncToUrl, projectId],
   );
 
   function handleModalClose() {

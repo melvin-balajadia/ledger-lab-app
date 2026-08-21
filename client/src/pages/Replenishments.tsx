@@ -3,7 +3,7 @@ import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
 import { budgetItemKeyAndLabel, groupByBudgetItem } from '../lib/budgetItemGrouping';
-import { PROJECT_ID } from '../hooks/useProjectData';
+import { useCurrentProject } from '../hooks/useProjectData';
 import { useRestoreReplenishment, useVoidedReplenishments } from '../hooks/useReplenishments';
 import { useTableUrlState } from '../hooks/useTableUrlState';
 import { ReplenishmentFilters, type FilterValues } from '../components/ReplenishmentFilters';
@@ -56,6 +56,7 @@ const columns: ColumnDef<Replenishment>[] = [
 ];
 
 export function Replenishments() {
+  const { projectId } = useCurrentProject();
   const [needsReviewOnly, setNeedsReviewOnly] = useState<'all' | 'flagged'>('all');
   const [filters, setFilters] = useState<FilterValues>({ date_from: '', date_to: '' });
   const [modal, setModal] = useState<'create' | Replenishment | null>(null);
@@ -68,6 +69,9 @@ export function Replenishments() {
 
   const fetchData = useCallback(
     async (fetchParams: FetchParams) => {
+      if (projectId === undefined) {
+        return { data: [], meta: { page: 1, perPage: fetchParams.perPage, total: 0, totalPages: 1 } };
+      }
       const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
       syncToUrl(fetchParams);
       const params = new URLSearchParams();
@@ -86,13 +90,13 @@ export function Replenishments() {
       if (filters.date_to) params.set('date_to', filters.date_to);
 
       const json = await fetchJson<ReplenishmentListResponse>(
-        `/api/projects/${PROJECT_ID}/replenishments?${params}`,
+        `/api/projects/${projectId}/replenishments?${params}`,
         { signal },
       );
       setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, needsReviewOnly, syncToUrl],
+    [filters, needsReviewOnly, syncToUrl, projectId],
   );
 
   function handleModalClose() {

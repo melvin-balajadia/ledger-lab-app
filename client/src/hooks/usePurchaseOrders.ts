@@ -9,13 +9,14 @@ import type {
   PurchaseOrderDetail,
   VoidedPurchaseOrder,
 } from '../types';
-import { PROJECT_ID } from './useProjectData';
+import { useCurrentProject } from './useProjectData';
 
 export function usePurchaseOrderDetail(poId: number | null) {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['purchase-order', PROJECT_ID, poId],
-    queryFn: () => fetchJson<PurchaseOrderDetail>(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}`),
-    enabled: poId != null,
+    queryKey: ['purchase-order', projectId, poId],
+    queryFn: () => fetchJson<PurchaseOrderDetail>(`/api/projects/${projectId}/purchase-orders/${poId}`),
+    enabled: poId != null && projectId !== undefined,
   });
 }
 
@@ -35,22 +36,28 @@ export interface CreatePurchaseOrderInput {
 }
 
 export function useCreatePurchaseOrder() {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: CreatePurchaseOrderInput) =>
-      postJson<PurchaseOrder>(`/api/projects/${PROJECT_ID}/purchase-orders`, body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-orders', PROJECT_ID] }),
+    mutationFn: (body: CreatePurchaseOrderInput) => {
+      if (!projectId) throw new Error('no project');
+      return postJson<PurchaseOrder>(`/api/projects/${projectId}/purchase-orders`, body);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-orders', projectId] }),
   });
 }
 
 export function useUpdatePurchaseOrder() {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: Partial<CreatePurchaseOrderInput> & { id: number }) =>
-      patchJson<PurchaseOrder>(`/api/projects/${PROJECT_ID}/purchase-orders/${id}`, body),
+    mutationFn: ({ id, ...body }: Partial<CreatePurchaseOrderInput> & { id: number }) => {
+      if (!projectId) throw new Error('no project');
+      return patchJson<PurchaseOrder>(`/api/projects/${projectId}/purchase-orders/${id}`, body);
+    },
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: ['purchase-order', PROJECT_ID, id] });
-      queryClient.invalidateQueries({ queryKey: ['purchase-orders', PROJECT_ID] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-order', projectId, id] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders', projectId] });
     },
   });
 }
@@ -66,95 +73,118 @@ export interface RecordPaymentInput {
 }
 
 export function useRecordPayment() {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ poId, ...body }: RecordPaymentInput) =>
-      postJson<PurchaseOrder>(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}/payments`, body),
+    mutationFn: ({ poId, ...body }: RecordPaymentInput) => {
+      if (!projectId) throw new Error('no project');
+      return postJson<PurchaseOrder>(`/api/projects/${projectId}/purchase-orders/${poId}/payments`, body);
+    },
     onSuccess: (_, { poId }) => {
-      queryClient.invalidateQueries({ queryKey: ['purchase-order', PROJECT_ID, poId] });
-      queryClient.invalidateQueries({ queryKey: ['purchase-orders', PROJECT_ID] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-order', projectId, poId] });
+      queryClient.invalidateQueries({ queryKey: ['purchase-orders', projectId] });
     },
   });
 }
 
 export function useUploadAttachment(poId: number) {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => {
+      if (!projectId) throw new Error('no project');
       const formData = new FormData();
       formData.append('file', file);
-      return postFormData<POAttachment>(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}/attachments`, formData);
+      return postFormData<POAttachment>(`/api/projects/${projectId}/purchase-orders/${poId}/attachments`, formData);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-order', PROJECT_ID, poId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-order', projectId, poId] }),
   });
 }
 
 export function useDeleteAttachment(poId: number) {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (attachmentId: number) =>
-      deleteRequest(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}/attachments/${attachmentId}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-order', PROJECT_ID, poId] }),
+    mutationFn: (attachmentId: number) => {
+      if (!projectId) throw new Error('no project');
+      return deleteRequest(`/api/projects/${projectId}/purchase-orders/${poId}/attachments/${attachmentId}`);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['purchase-order', projectId, poId] }),
   });
 }
 
-function invalidatePo(queryClient: ReturnType<typeof useQueryClient>, poId: number) {
-  queryClient.invalidateQueries({ queryKey: ['purchase-order', PROJECT_ID, poId] });
-  queryClient.invalidateQueries({ queryKey: ['purchase-orders', PROJECT_ID] });
+function invalidatePo(queryClient: ReturnType<typeof useQueryClient>, projectId: number | undefined, poId: number) {
+  queryClient.invalidateQueries({ queryKey: ['purchase-order', projectId, poId] });
+  queryClient.invalidateQueries({ queryKey: ['purchase-orders', projectId] });
 }
 
 // "Delete" voids -- the PO disappears from every list/total exactly like
 // removing a spreadsheet row, but stays restorable from "Deleted items".
 export function useVoidPurchaseOrder(poId: number) {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (reason?: string) =>
-      deleteRequest(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}`, reason ? { reason } : undefined),
-    onSuccess: () => invalidatePo(queryClient, poId),
+    mutationFn: (reason?: string) => {
+      if (!projectId) throw new Error('no project');
+      return deleteRequest(`/api/projects/${projectId}/purchase-orders/${poId}`, reason ? { reason } : undefined);
+    },
+    onSuccess: () => invalidatePo(queryClient, projectId, poId),
   });
 }
 
 export function useRestorePurchaseOrder() {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (poId: number) => postJson(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}/restore`, {}),
-    onSuccess: (_, poId) => invalidatePo(queryClient, poId),
+    mutationFn: (poId: number) => {
+      if (!projectId) throw new Error('no project');
+      return postJson(`/api/projects/${projectId}/purchase-orders/${poId}/restore`, {});
+    },
+    onSuccess: (_, poId) => invalidatePo(queryClient, projectId, poId),
   });
 }
 
 export function useVoidedPurchaseOrders(enabled: boolean) {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['purchase-orders', PROJECT_ID, 'voided'],
-    queryFn: () => fetchJson<VoidedPurchaseOrder[]>(`/api/projects/${PROJECT_ID}/purchase-orders/voided`),
-    enabled,
+    queryKey: ['purchase-orders', projectId, 'voided'],
+    queryFn: () => fetchJson<VoidedPurchaseOrder[]>(`/api/projects/${projectId}/purchase-orders/voided`),
+    enabled: enabled && projectId !== undefined,
   });
 }
 
 export function useVoidPoPayment(poId: number) {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ paymentId, reason }: { paymentId: number; reason?: string }) =>
-      deleteRequest(
-        `/api/projects/${PROJECT_ID}/purchase-orders/${poId}/payments/${paymentId}`,
+    mutationFn: ({ paymentId, reason }: { paymentId: number; reason?: string }) => {
+      if (!projectId) throw new Error('no project');
+      return deleteRequest(
+        `/api/projects/${projectId}/purchase-orders/${poId}/payments/${paymentId}`,
         reason ? { reason } : undefined,
-      ),
-    onSuccess: () => invalidatePo(queryClient, poId),
+      );
+    },
+    onSuccess: () => invalidatePo(queryClient, projectId, poId),
   });
 }
 
 export function useRestorePoPayment(poId: number) {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (paymentId: number) =>
-      postJson(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}/payments/${paymentId}/restore`, {}),
-    onSuccess: () => invalidatePo(queryClient, poId),
+    mutationFn: (paymentId: number) => {
+      if (!projectId) throw new Error('no project');
+      return postJson(`/api/projects/${projectId}/purchase-orders/${poId}/payments/${paymentId}/restore`, {});
+    },
+    onSuccess: () => invalidatePo(queryClient, projectId, poId),
   });
 }
 
 export function useVoidedPoPayments(poId: number, enabled: boolean) {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['purchase-order', PROJECT_ID, poId, 'voided-payments'],
-    queryFn: () => fetchJson<POPayment[]>(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}/payments/voided`),
-    enabled,
+    queryKey: ['purchase-order', projectId, poId, 'voided-payments'],
+    queryFn: () => fetchJson<POPayment[]>(`/api/projects/${projectId}/purchase-orders/${poId}/payments/voided`),
+    enabled: enabled && projectId !== undefined,
   });
 }

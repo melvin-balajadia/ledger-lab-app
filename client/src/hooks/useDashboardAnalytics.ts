@@ -1,53 +1,67 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchJson } from '../lib/api';
 import type { CostBreakdown, CostTrendPoint, DashboardAlert, RetentionSummary, TopSupplier, VatSummary, WeeklyBurnPoint } from '../types';
-import { PROJECT_ID } from './useProjectData';
+import { useCurrentProject } from './useProjectData';
 
 export function useCostBreakdown() {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['cost-breakdown', PROJECT_ID],
-    queryFn: () => fetchJson<CostBreakdown>(`/api/projects/${PROJECT_ID}/cost-breakdown`),
+    queryKey: ['cost-breakdown', projectId],
+    queryFn: () => fetchJson<CostBreakdown>(`/api/projects/${projectId}/cost-breakdown`),
+    enabled: projectId !== undefined,
   });
 }
 
 export function useCostTrend(months = 6) {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['cost-trend', PROJECT_ID, months],
-    queryFn: () => fetchJson<CostTrendPoint[]>(`/api/projects/${PROJECT_ID}/cost-trend?months=${months}`),
+    queryKey: ['cost-trend', projectId, months],
+    queryFn: () => fetchJson<CostTrendPoint[]>(`/api/projects/${projectId}/cost-trend?months=${months}`),
+    enabled: projectId !== undefined,
   });
 }
 
 export function useAlerts() {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['alerts', PROJECT_ID],
-    queryFn: () => fetchJson<DashboardAlert[]>(`/api/projects/${PROJECT_ID}/alerts`),
+    queryKey: ['alerts', projectId],
+    queryFn: () => fetchJson<DashboardAlert[]>(`/api/projects/${projectId}/alerts`),
+    enabled: projectId !== undefined,
   });
 }
 
 export function useRetentionSummary() {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['retention', PROJECT_ID],
-    queryFn: () => fetchJson<RetentionSummary>(`/api/projects/${PROJECT_ID}/retention`),
+    queryKey: ['retention', projectId],
+    queryFn: () => fetchJson<RetentionSummary>(`/api/projects/${projectId}/retention`),
+    enabled: projectId !== undefined,
   });
 }
 
 export function useVatSummary() {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['vat-summary', PROJECT_ID],
-    queryFn: () => fetchJson<VatSummary>(`/api/projects/${PROJECT_ID}/vat-summary`),
+    queryKey: ['vat-summary', projectId],
+    queryFn: () => fetchJson<VatSummary>(`/api/projects/${projectId}/vat-summary`),
+    enabled: projectId !== undefined,
   });
 }
 
 export function useTopSuppliers(limit = 10) {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['top-suppliers', PROJECT_ID, limit],
-    queryFn: () => fetchJson<TopSupplier[]>(`/api/projects/${PROJECT_ID}/top-suppliers?limit=${limit}`),
+    queryKey: ['top-suppliers', projectId, limit],
+    queryFn: () => fetchJson<TopSupplier[]>(`/api/projects/${projectId}/top-suppliers?limit=${limit}`),
+    enabled: projectId !== undefined,
   });
 }
 
 export function useWeeklyBurn(weeks = 12) {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['weekly-burn', PROJECT_ID, weeks],
-    queryFn: () => fetchJson<WeeklyBurnPoint[]>(`/api/projects/${PROJECT_ID}/weekly-burn?weeks=${weeks}`),
+    queryKey: ['weekly-burn', projectId, weeks],
+    queryFn: () => fetchJson<WeeklyBurnPoint[]>(`/api/projects/${projectId}/weekly-burn?weeks=${weeks}`),
+    enabled: projectId !== undefined,
   });
 }

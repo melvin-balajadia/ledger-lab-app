@@ -2,22 +2,39 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchJson } from '../lib/api';
 import type { BudgetSummaryRow, ProjectKpis } from '../types';
 
-// No multi-tenancy in the UI (CLAUDE.md) -- single project, hardcoded. This
-// portfolio build is a single general-purpose showcase deployment, not a
-// per-site one, so there's no site.config indirection -- just the id of the
-// one demo project seeded by db/schema.postgres.sql.
-export const PROJECT_ID = 1;
+interface MeResponse {
+  userId: string;
+  email: string;
+  projectId?: number;
+  needsSetup?: boolean;
+}
+
+export function useCurrentProject() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => fetchJson<MeResponse>('/api/me'),
+  });
+  return {
+    projectId: data?.projectId,
+    needsSetup: data?.needsSetup ?? false,
+    isLoading,
+  };
+}
 
 export function useProjectSummary() {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['project-summary', PROJECT_ID],
-    queryFn: () => fetchJson<BudgetSummaryRow[]>(`/api/projects/${PROJECT_ID}/summary`),
+    queryKey: ['project-summary', projectId],
+    queryFn: () => fetchJson<BudgetSummaryRow[]>(`/api/projects/${projectId}/summary`),
+    enabled: projectId !== undefined,
   });
 }
 
 export function useProjectKpis() {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['project-kpis', PROJECT_ID],
-    queryFn: () => fetchJson<ProjectKpis>(`/api/projects/${PROJECT_ID}/kpis`),
+    queryKey: ['project-kpis', projectId],
+    queryFn: () => fetchJson<ProjectKpis>(`/api/projects/${projectId}/kpis`),
+    enabled: projectId !== undefined,
   });
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
-import { PROJECT_ID } from '../hooks/useProjectData';
+import { useCurrentProject } from '../hooks/useProjectData';
 import { useTableUrlState } from '../hooks/useTableUrlState';
 import { PayrollPeriodFilters, type PayrollPeriodFilterValues } from '../components/PayrollPeriodFilters';
 import { WorkerFilters, type WorkerFilterValues } from '../components/WorkerFilters';
@@ -106,6 +106,7 @@ const workerColumns: ColumnDef<Worker>[] = [
 
 export function Payroll() {
   const navigate = useNavigate();
+  const { projectId } = useCurrentProject();
   const [viewMode, setViewMode] = useState<'periods' | 'workers'>('periods');
 
   const [attentionOnly, setAttentionOnly] = useState<'all' | 'attention'>('all');
@@ -134,6 +135,9 @@ export function Payroll() {
 
   const fetchPeriods = useCallback(
     async (fetchParams: FetchParams) => {
+      if (projectId === undefined) {
+        return { data: [], meta: { page: 1, perPage: fetchParams.perPage, total: 0, totalPages: 1 } };
+      }
       const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
       syncPeriodsToUrl(fetchParams);
       const params = new URLSearchParams();
@@ -154,17 +158,20 @@ export function Payroll() {
       }
 
       const json = await fetchJson<PayrollPeriodListResponse>(
-        `/api/projects/${PROJECT_ID}/payroll-periods?${params}`,
+        `/api/projects/${projectId}/payroll-periods?${params}`,
         { signal },
       );
       setPeriodSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [periodFilters, attentionOnly, syncPeriodsToUrl],
+    [periodFilters, attentionOnly, syncPeriodsToUrl, projectId],
   );
 
   const fetchWorkers = useCallback(
     async (fetchParams: FetchParams) => {
+      if (projectId === undefined) {
+        return { data: [], meta: { page: 1, perPage: fetchParams.perPage, total: 0, totalPages: 1 } };
+      }
       const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
       syncWorkersToUrl(fetchParams);
       const params = new URLSearchParams();
@@ -178,11 +185,11 @@ export function Payroll() {
       if (workerFilters.position) params.set('position', workerFilters.position);
       if (activeFilter !== 'all') params.set('is_active', activeFilter === 'active' ? '1' : '0');
 
-      const json = await fetchJson<WorkerListResponse>(`/api/projects/${PROJECT_ID}/workers?${params}`, { signal });
+      const json = await fetchJson<WorkerListResponse>(`/api/projects/${projectId}/workers?${params}`, { signal });
       setWorkerSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [workerFilters, activeFilter, syncWorkersToUrl],
+    [workerFilters, activeFilter, syncWorkersToUrl, projectId],
   );
 
   function handleWorkerModalClose() {

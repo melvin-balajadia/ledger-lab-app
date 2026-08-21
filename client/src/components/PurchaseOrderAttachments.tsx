@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchImageUrl } from '../lib/api';
 import { useDeleteAttachment, useUploadAttachment } from '../hooks/usePurchaseOrders';
-import { PROJECT_ID } from '../hooks/useProjectData';
+import { useCurrentProject } from '../hooks/useProjectData';
 import { Modal } from './Modal';
 import { IconFileText } from './icons';
 import type { POAttachment } from '../types';
@@ -68,13 +68,14 @@ export function PurchaseOrderAttachments({ poId, attachments }: { poId: number; 
 // PDFs show a static icon in the grid (see AttachmentThumb) and only need
 // the actual blob once opened full-size in the lightbox.
 function useAttachmentFileUrl(poId: number, attachmentId: number, skip = false) {
+  const { projectId } = useCurrentProject();
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (skip) return;
+    if (skip || projectId === undefined) return;
     let objectUrl: string | null = null;
     let cancelled = false;
-    fetchImageUrl(`/api/projects/${PROJECT_ID}/purchase-orders/${poId}/attachments/${attachmentId}/file`).then((u) => {
+    fetchImageUrl(`/api/projects/${projectId}/purchase-orders/${poId}/attachments/${attachmentId}/file`).then((u) => {
       if (cancelled) {
         URL.revokeObjectURL(u);
         return;
@@ -86,7 +87,7 @@ function useAttachmentFileUrl(poId: number, attachmentId: number, skip = false) 
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [poId, attachmentId, skip]);
+  }, [poId, attachmentId, skip, projectId]);
 
   return url;
 }

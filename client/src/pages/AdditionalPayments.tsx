@@ -3,7 +3,7 @@ import { fetchJson } from '../lib/api';
 import { toPageMeta } from '../lib/dataTablePage';
 import { formatMoney } from '../lib/formatMoney';
 import { budgetItemKeyAndLabel, groupByBudgetItem } from '../lib/budgetItemGrouping';
-import { PROJECT_ID } from '../hooks/useProjectData';
+import { useCurrentProject } from '../hooks/useProjectData';
 import { useRestoreAdditionalPayment, useVoidedAdditionalPayments } from '../hooks/useAdditionalPayments';
 import { useTableUrlState } from '../hooks/useTableUrlState';
 import { AdditionalPaymentFilters, type AdditionalPaymentFilterValues } from '../components/AdditionalPaymentFilters';
@@ -66,6 +66,7 @@ const columns: ColumnDef<AdditionalPayment>[] = [
 ];
 
 export function AdditionalPayments() {
+  const { projectId } = useCurrentProject();
   const [needsReviewOnly, setNeedsReviewOnly] = useState<'all' | 'flagged'>('all');
   const [filters, setFilters] = useState<AdditionalPaymentFilterValues>({ date_from: '', date_to: '' });
   const [modal, setModal] = useState<'create' | AdditionalPayment | null>(null);
@@ -78,6 +79,9 @@ export function AdditionalPayments() {
 
   const fetchData = useCallback(
     async (fetchParams: FetchParams) => {
+      if (projectId === undefined) {
+        return { data: [], meta: { page: 1, perPage: fetchParams.perPage, total: 0, totalPages: 1 } };
+      }
       const { page, perPage, search, sortKey, sortDir, signal } = fetchParams;
       syncToUrl(fetchParams);
       const params = new URLSearchParams();
@@ -96,13 +100,13 @@ export function AdditionalPayments() {
       if (filters.date_to) params.set('date_to', filters.date_to);
 
       const json = await fetchJson<AdditionalPaymentListResponse>(
-        `/api/projects/${PROJECT_ID}/additional-payments?${params}`,
+        `/api/projects/${projectId}/additional-payments?${params}`,
         { signal },
       );
       setSummary(json.summary);
       return { data: json.rows, meta: toPageMeta(json) };
     },
-    [filters, needsReviewOnly, syncToUrl],
+    [filters, needsReviewOnly, syncToUrl, projectId],
   );
 
   function handleModalClose() {

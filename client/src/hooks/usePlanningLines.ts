@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchJson, patchJson, postJson } from '../lib/api';
 import type { PlanningLine } from '../types';
-import { PROJECT_ID } from './useProjectData';
+import { useCurrentProject } from './useProjectData';
 
 export function usePlanningLines() {
+  const { projectId } = useCurrentProject();
   return useQuery({
-    queryKey: ['planning-lines', PROJECT_ID],
-    queryFn: () => fetchJson<PlanningLine[]>(`/api/projects/${PROJECT_ID}/planning-lines`),
+    queryKey: ['planning-lines', projectId],
+    queryFn: () => fetchJson<PlanningLine[]>(`/api/projects/${projectId}/planning-lines`),
     staleTime: 5 * 60 * 1000,
+    enabled: projectId !== undefined,
   });
 }
 
@@ -17,15 +19,19 @@ function invalidatePlanningLines(queryClient: ReturnType<typeof useQueryClient>)
 }
 
 export function useCreatePlanningLine() {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { code: string; description?: string | null; budget_amount?: string | null }) =>
-      postJson<PlanningLine>(`/api/projects/${PROJECT_ID}/planning-lines`, body),
+    mutationFn: (body: { code: string; description?: string | null; budget_amount?: string | null }) => {
+      if (!projectId) throw new Error('no project');
+      return postJson<PlanningLine>(`/api/projects/${projectId}/planning-lines`, body);
+    },
     onSuccess: () => invalidatePlanningLines(queryClient),
   });
 }
 
 export function useUpdatePlanningLine() {
+  const { projectId } = useCurrentProject();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
@@ -37,7 +43,10 @@ export function useUpdatePlanningLine() {
       description?: string | null;
       budget_amount?: string | null;
       is_active?: 0 | 1;
-    }) => patchJson<PlanningLine>(`/api/projects/${PROJECT_ID}/planning-lines/${id}`, body),
+    }) => {
+      if (!projectId) throw new Error('no project');
+      return patchJson<PlanningLine>(`/api/projects/${projectId}/planning-lines/${id}`, body);
+    },
     onSuccess: () => invalidatePlanningLines(queryClient),
   });
 }
