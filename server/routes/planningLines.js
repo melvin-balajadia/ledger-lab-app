@@ -104,7 +104,10 @@ router.patch('/:id/planning-lines/:lineId', async (req, res, next) => {
   try {
     await conn.beginTransaction();
 
-    const { rows: existingRows } = await conn.query('SELECT * FROM planning_lines WHERE id = ? FOR UPDATE', [lineId]);
+    const { rows: existingRows } = await conn.query(
+      'SELECT * FROM planning_lines WHERE id = ? AND project_id = ? FOR UPDATE',
+      [lineId, req.projectId]
+    );
     if (existingRows.length === 0) {
       await conn.rollback();
       return res.status(404).json({ error: 'Planning line not found' });

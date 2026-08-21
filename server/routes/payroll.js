@@ -59,6 +59,13 @@ async function assertPlanningLineBelongsToProject(conn, projectId, planningLineI
   return null;
 }
 
+async function assertWorkerBelongsToProject(conn, projectId, workerId) {
+  if (workerId == null) return null;
+  const { rows } = await conn.query('SELECT id FROM workers WHERE id = ? AND project_id = ?', [workerId, projectId]);
+  if (rows.length === 0) return 'worker_id does not belong to this project';
+  return null;
+}
+
 // Only enforced when a planning_line_id is newly being set/changed -- an
 // existing entry that already cites a since-deactivated code must stay
 // editable for its other fields (never invalidate history).
@@ -261,7 +268,10 @@ router.patch('/:id/payroll-periods/:periodId', async (req, res, next) => {
   try {
     await conn.beginTransaction();
 
-    const { rows: existingRows } = await conn.query('SELECT * FROM payroll_periods WHERE id = ? FOR UPDATE', [periodId]);
+    const { rows: existingRows } = await conn.query(
+      'SELECT * FROM payroll_periods WHERE id = ? AND project_id = ? FOR UPDATE',
+      [periodId, req.projectId]
+    );
     if (existingRows.length === 0) {
       await conn.rollback();
       return res.status(404).json({ error: 'Payroll period not found' });
@@ -509,6 +519,12 @@ router.post('/:id/payroll-periods/:periodId/entries', async (req, res, next) => 
       return res.status(404).json({ error: 'Payroll period not found' });
     }
 
+    const workerErr = await assertWorkerBelongsToProject(conn, projectId, workerId);
+    if (workerErr) {
+      await conn.rollback();
+      return res.status(400).json({ error: workerErr });
+    }
+
     const planningLineErr = await assertPlanningLineBelongsToProject(conn, projectId, planningLineId);
     if (planningLineErr) {
       await conn.rollback();
@@ -565,7 +581,10 @@ router.patch('/:id/payroll-periods/:periodId/entries/:entryId', async (req, res,
   try {
     await conn.beginTransaction();
 
-    const { rows: existingRows } = await conn.query('SELECT * FROM payroll_entries WHERE id = ? FOR UPDATE', [entryId]);
+    const { rows: existingRows } = await conn.query(
+      'SELECT * FROM payroll_entries WHERE id = ? AND project_id = ? FOR UPDATE',
+      [entryId, req.projectId]
+    );
     if (existingRows.length === 0) {
       await conn.rollback();
       return res.status(404).json({ error: 'Entry not found' });
@@ -636,8 +655,8 @@ router.delete('/:id/payroll-periods/:periodId/entries/:entryId', async (req, res
     await conn.beginTransaction();
 
     const { rows: existingRows } = await conn.query(
-      'SELECT * FROM payroll_entries WHERE id = ? AND voided_at IS NULL FOR UPDATE',
-      [entryId]
+      'SELECT * FROM payroll_entries WHERE id = ? AND project_id = ? AND voided_at IS NULL FOR UPDATE',
+      [entryId, req.projectId]
     );
     if (existingRows.length === 0) {
       await conn.rollback();
@@ -675,8 +694,8 @@ router.post('/:id/payroll-periods/:periodId/entries/:entryId/restore', async (re
     await conn.beginTransaction();
 
     const { rows: existingRows } = await conn.query(
-      'SELECT * FROM payroll_entries WHERE id = ? AND voided_at IS NOT NULL FOR UPDATE',
-      [entryId]
+      'SELECT * FROM payroll_entries WHERE id = ? AND project_id = ? AND voided_at IS NOT NULL FOR UPDATE',
+      [entryId, req.projectId]
     );
     if (existingRows.length === 0) {
       await conn.rollback();
