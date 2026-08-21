@@ -22,8 +22,18 @@ async function requireAuth(req, res, next) {
     // this point. req.path, however, IS already mount-relative (e.g.
     // '/1/summary') by the time this middleware runs, so the id is read
     // from the URL directly instead.
-    const idSegment = req.path.split('/')[1];
-    if (req.method === 'GET' && Number(idSegment) === PUBLIC_DEMO_PROJECT_ID) {
+    //
+    // Decoded and matched exactly the way resolveProject.js does it, so the
+    // two can never disagree about which project a URL names: strict
+    // /^\d+$/ after decodeURIComponent, malformed encoding rejected outright.
+    const rawSegment = req.path.split('/')[1] || '';
+    let idSegment;
+    try {
+      idSegment = decodeURIComponent(rawSegment);
+    } catch {
+      return res.status(400).json({ error: 'invalid project id' });
+    }
+    if (req.method === 'GET' && /^\d+$/.test(idSegment) && Number(idSegment) === PUBLIC_DEMO_PROJECT_ID) {
       req.projectId = PUBLIC_DEMO_PROJECT_ID;
       req.isAnonymousDemo = true;
       return next();
@@ -31,7 +41,16 @@ async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'not authenticated' });
   }
 
-  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  // Supabase returns { error } for a genuinely invalid token -- that's a 401.
+  // A thrown exception means Auth itself is unreachable, which is a 503, not
+  // an unhandled rejection.
+  let data;
+  let error;
+  try {
+    ({ data, error } = await supabaseAdmin.auth.getUser(token));
+  } catch {
+    return res.status(503).json({ error: 'auth service unavailable' });
+  }
   if (error || !data.user) return res.status(401).json({ error: 'not authenticated' });
 
   req.user = { id: data.user.id, email: data.user.email };
