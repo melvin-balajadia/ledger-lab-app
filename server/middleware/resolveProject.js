@@ -11,7 +11,15 @@ async function resolveProject(req, res, next) {
       return res.status(404).json({ needsSetup: true });
     }
 
-    if (req.params.id !== undefined && Number(req.params.id) !== project.id) {
+    // req.params.id isn't populated yet at this point in the middleware chain --
+    // Express only extracts route params once the request reaches the sub-router
+    // that actually declares `:id` (e.g. router.get('/:id/summary', ...)), which
+    // happens AFTER this middleware runs. Extract it from the URL path directly
+    // (same technique as requireAuth's anonymous-demo carve-out, verified there).
+    const match = req.path.match(/^\/(\d+)(\/|$)/);
+    const urlProjectId = match ? match[1] : undefined;
+
+    if (urlProjectId !== undefined && Number(urlProjectId) !== project.id) {
       return res.status(403).json({ error: 'forbidden' });
     }
 
