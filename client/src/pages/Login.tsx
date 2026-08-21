@@ -2,17 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInWithGoogle, signInWithPassword } from "../hooks/useAuth";
 import { Button } from "../components/Button";
-import { IconEye, IconEyeOff } from "../components/icons";
-
-// A faint ledger-paper ruling behind the card -- the one deliberate flourish
-// on this page, and it's not decoration for its own sake: this tool is a
-// digitized ledger, so the background is quite literally ruled paper.
-// Built from the same --color-rule token every hairline border in the app
-// already uses, so it repaints correctly under dark mode with no extra work.
-const LEDGER_BACKGROUND = {
-  backgroundImage:
-    "repeating-linear-gradient(to bottom, transparent, transparent 31px, var(--color-rule) 31px, var(--color-rule) 32px)",
-};
+import { IconEye, IconEyeOff, IconGoogle } from "../components/icons";
 
 export function Login() {
   const navigate = useNavigate();
@@ -46,10 +36,7 @@ export function Login() {
   }
 
   return (
-    <div
-      className="flex min-h-screen flex-col items-center justify-center gap-6 bg-canvas px-4"
-      style={LEDGER_BACKGROUND}
-    >
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-canvas px-4">
       <form
         onSubmit={handleSubmit}
         className="flex w-full max-w-md flex-col gap-5 rounded-lg border border-rule bg-surface p-7 shadow-card sm:p-9"
@@ -125,6 +112,7 @@ export function Login() {
           onClick={handleGoogleSignIn}
           className="justify-center"
         >
+          <IconGoogle className="h-4 w-4" />
           Continue with Google
         </Button>
 

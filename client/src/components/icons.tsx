@@ -309,6 +309,32 @@ export function IconTable({ className }: IconProps) {
   );
 }
 
+// Google's brand mark, not the outline-icon set above -- it's a required
+// fixed-color logo (per Google's sign-in branding guidelines), not a
+// currentColor-tinted glyph, so it doesn't use the shared `base` props.
+export function IconGoogle({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className}>
+      <path
+        fill="#4285F4"
+        d="M23.52 12.27c0-.82-.07-1.6-.2-2.36H12v4.47h6.47c-.28 1.5-1.13 2.77-2.4 3.62v3.02h3.89c2.28-2.1 3.56-5.17 3.56-8.75z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.08 7.93-2.92l-3.89-3.02c-1.08.72-2.45 1.15-4.04 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.11C3.24 21.3 7.31 24 12 24z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.27 14.25c-.24-.72-.38-1.49-.38-2.25s.14-1.53.38-2.25V6.64H1.27C.46 8.24 0 10.06 0 12s.46 3.76 1.27 5.36l4-3.11z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.24 2.7 1.27 6.64l4 3.11C6.22 6.86 8.87 4.75 12 4.75z"
+      />
+    </svg>
+  );
+}
+
 export function IconFileText({ className }: IconProps) {
   return (
     <svg {...base} className={className}>

@@ -4,12 +4,6 @@ import { signUpWithPassword } from "../hooks/useAuth";
 import { Button } from "../components/Button";
 import { IconEye, IconEyeOff } from "../components/icons";
 
-// Same ledger-paper flourish as Login.tsx -- see the comment there.
-const LEDGER_BACKGROUND = {
-  backgroundImage:
-    "repeating-linear-gradient(to bottom, transparent, transparent 31px, var(--color-rule) 31px, var(--color-rule) 32px)",
-};
-
 export function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,10 +27,7 @@ export function Signup() {
   }
 
   return (
-    <div
-      className="flex min-h-screen flex-col items-center justify-center gap-6 bg-canvas px-4"
-      style={LEDGER_BACKGROUND}
-    >
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-canvas px-4">
       <div className="flex w-full max-w-md flex-col gap-5 rounded-lg border border-rule bg-surface p-7 shadow-card sm:p-9">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-[28px] font-semibold tracking-tight text-ink">
