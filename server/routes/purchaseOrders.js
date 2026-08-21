@@ -331,7 +331,7 @@ router.post('/:id/purchase-orders', async (req, res, next) => {
 
   if (errors.length > 0) return res.status(400).json({ error: errors });
 
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -407,7 +407,7 @@ router.post('/:id/purchase-orders', async (req, res, next) => {
 router.patch('/:id/purchase-orders/:poId', async (req, res, next) => {
   const projectId = req.params.id;
   const { poId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -543,7 +543,7 @@ router.post('/:id/purchase-orders/:poId/payments', async (req, res, next) => {
   validateCurrencyAndFxRate(currency, fx_rate, errors);
   if (errors.length > 0) return res.status(400).json({ error: errors });
 
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -607,7 +607,7 @@ router.get('/:id/purchase-orders/:poId/payments/voided', async (req, res, next) 
 // status is recomputed since removing a payment can drop it back out of
 // fully_paid/partially_paid.
 router.delete('/:id/purchase-orders/:poId/payments/:paymentId', async (req, res, next) => {
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -650,7 +650,7 @@ router.delete('/:id/purchase-orders/:poId/payments/:paymentId', async (req, res,
 });
 
 router.post('/:id/purchase-orders/:poId/payments/:paymentId/restore', async (req, res, next) => {
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -697,7 +697,7 @@ router.post('/:id/purchase-orders/:poId/payments/:paymentId/restore', async (req
 // total) but restorable, unlike a real DELETE which would cascade away
 // po_payments/po_payment_terms permanently.
 router.delete('/:id/purchase-orders/:poId', async (req, res, next) => {
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -735,7 +735,7 @@ router.delete('/:id/purchase-orders/:poId', async (req, res, next) => {
 });
 
 router.post('/:id/purchase-orders/:poId/restore', async (req, res, next) => {
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -787,7 +787,7 @@ router.post('/:id/purchase-orders/:poId/attachments', (req, res, next) => {
     if (uploadErr) return res.status(400).json({ error: uploadErr.message });
     if (!req.file) return res.status(400).json({ error: 'file is required' });
 
-    const appUser = req.session.username;
+    const appUser = req.user.email;
     const conn = await pool.getConnection();
     try {
       await conn.beginTransaction();
@@ -857,7 +857,7 @@ router.get('/:id/purchase-orders/:poId/attachments/:attachmentId/file', async (r
 });
 
 router.delete('/:id/purchase-orders/:poId/attachments/:attachmentId', async (req, res, next) => {
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();

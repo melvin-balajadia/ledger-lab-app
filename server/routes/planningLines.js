@@ -59,7 +59,7 @@ router.post('/:id/planning-lines', async (req, res, next) => {
     return res.status(400).json({ error: 'code must be digits and dots only, e.g. "3.2.5" -- no leading/trailing/double dots' });
   }
 
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -99,7 +99,7 @@ router.post('/:id/planning-lines', async (req, res, next) => {
 router.patch('/:id/planning-lines/:lineId', async (req, res, next) => {
   const projectId = req.params.id;
   const { lineId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();

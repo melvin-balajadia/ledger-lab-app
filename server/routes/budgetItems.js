@@ -99,7 +99,7 @@ router.post('/:id/budget-items', async (req, res, next) => {
   // Matches the seed's convention (1.0 -> 10, ... 20.0 -> 200), so ordering is
   // derived rather than another number to type and keep unique.
   const sortOrder = Number(itemNo.split('.')[0]) * 10;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
 
   const conn = await pool.getConnection();
   try {
@@ -161,7 +161,7 @@ router.post('/:id/budget-items/:budgetItemId/revisions', async (req, res, next) 
   }
   if (errors.length > 0) return res.status(400).json({ error: errors });
 
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -216,7 +216,7 @@ router.post('/:id/budget-items/:budgetItemId/revisions', async (req, res, next) 
 
 router.patch('/:id/budget-items/:budgetItemId', async (req, res, next) => {
   const { budgetItemId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
 
   const errors = [];
   if (req.body.procurement_mode !== undefined && !PROCUREMENT_MODES.includes(req.body.procurement_mode)) {

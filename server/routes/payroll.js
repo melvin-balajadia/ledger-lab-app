@@ -220,7 +220,7 @@ router.post('/:id/payroll-periods', async (req, res, next) => {
     return res.status(400).json({ error: 'period_start must be on or before period_end' });
   }
 
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -256,7 +256,7 @@ router.post('/:id/payroll-periods', async (req, res, next) => {
 
 router.patch('/:id/payroll-periods/:periodId', async (req, res, next) => {
   const { periodId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -347,7 +347,7 @@ router.get('/:id/payroll-periods/:periodId/copy-roster-source', async (req, res,
 router.post('/:id/payroll-periods/:periodId/copy-roster', async (req, res, next) => {
   const projectId = req.params.id;
   const { periodId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -495,7 +495,7 @@ router.post('/:id/payroll-periods/:periodId/entries', async (req, res, next) => 
     return res.status(400).json({ error: 'worker_id and amount are required' });
   }
 
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -560,7 +560,7 @@ router.post('/:id/payroll-periods/:periodId/entries', async (req, res, next) => 
 router.patch('/:id/payroll-periods/:periodId/entries/:entryId', async (req, res, next) => {
   const projectId = req.params.id;
   const { entryId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -630,7 +630,7 @@ router.patch('/:id/payroll-periods/:periodId/entries/:entryId', async (req, res,
 // exactly like removing it from the spreadsheet, but stays restorable.
 router.delete('/:id/payroll-periods/:periodId/entries/:entryId', async (req, res, next) => {
   const { entryId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -669,7 +669,7 @@ router.delete('/:id/payroll-periods/:periodId/entries/:entryId', async (req, res
 
 router.post('/:id/payroll-periods/:periodId/entries/:entryId/restore', async (req, res, next) => {
   const { entryId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();

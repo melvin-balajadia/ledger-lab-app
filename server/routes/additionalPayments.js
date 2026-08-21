@@ -211,7 +211,7 @@ router.post('/:id/additional-payments', async (req, res, next) => {
   }
 
   const documentNo = lines.length > 1 ? bodyDocumentNo || `SPLIT-${crypto.randomUUID()}` : bodyDocumentNo || null;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
 
   const conn = await pool.getConnection();
   try {
@@ -329,7 +329,7 @@ router.patch('/:id/additional-payments/:apId', async (req, res, next) => {
       }
     }
 
-    const appUser = req.session.username;
+    const appUser = req.user.email;
     await conn.query(
       `UPDATE additional_payments SET
          txn_date = ?, payee = ?, supplier_id = ?, planning_line_id = ?, budget_item_id = ?,
@@ -367,7 +367,7 @@ router.patch('/:id/additional-payments/:apId', async (req, res, next) => {
 // "Delete" voids rather than deletes -- the row disappears from every list
 // and total exactly like removing a spreadsheet row, but stays restorable.
 router.delete('/:id/additional-payments/:apId', async (req, res, next) => {
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -405,7 +405,7 @@ router.delete('/:id/additional-payments/:apId', async (req, res, next) => {
 });
 
 router.post('/:id/additional-payments/:apId/restore', async (req, res, next) => {
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();

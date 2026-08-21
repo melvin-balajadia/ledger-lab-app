@@ -73,7 +73,7 @@ router.post('/', async (req, res, next) => {
     return res.status(400).json({ error: 'name does not normalize to anything usable' });
   }
 
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -109,7 +109,7 @@ router.post('/', async (req, res, next) => {
 
 router.patch('/:id', async (req, res, next) => {
   const { id } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();

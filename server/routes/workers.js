@@ -99,7 +99,7 @@ router.post('/:id/workers', async (req, res, next) => {
   }
 
   const fullName = buildFullName({ last_name: lastName, first_name: firstName, middle_name: middleName });
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -143,7 +143,7 @@ router.post('/:id/workers', async (req, res, next) => {
 
 router.patch('/:id/workers/:workerId', async (req, res, next) => {
   const { workerId } = req.params;
-  const appUser = req.session.username;
+  const appUser = req.user.email;
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
