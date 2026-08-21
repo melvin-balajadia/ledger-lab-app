@@ -47,6 +47,20 @@ function validateDateInWindow(date, fieldName) {
   return [];
 }
 
+// Shared by create and edit. suppliers carry a project_id (see
+// db/migrations/001_accounts_multitenancy.sql), so a caller-supplied
+// supplier_id must be checked the same way planning_line_id is -- otherwise
+// the created/updated PO would echo another project's supplier name back.
+async function assertSupplierBelongsToProject(conn, projectId, supplierId) {
+  if (supplierId == null) return null;
+  const { rows } = await conn.query('SELECT id FROM suppliers WHERE id = ? AND project_id = ?', [
+    supplierId,
+    projectId,
+  ]);
+  if (rows.length === 0) return 'supplier_id does not belong to this project';
+  return null;
+}
+
 // Shared by create and edit -- same rules either way: must sum to exactly
 // 100%, every milestone needs a label/pct, and a holdback must be a
 // minority tail (e.g. "100% Upon Completion" is due-at-end, not retention).
@@ -187,7 +201,7 @@ router.get('/:id/purchase-orders', async (req, res, next) => {
       const planningLineIds = await resolvePlanningLineIdsWithDescendants(
         pool, req.params.id, req.query.planning_line_id
       );
-      where.push('po.planning_line_id IN (?)');
+      where.push('po.planning_line_id = ANY(?)');
       params.push(planningLineIds);
     }
     if (req.query.status) {
@@ -336,6 +350,12 @@ router.post('/:id/purchase-orders', async (req, res, next) => {
   try {
     await conn.beginTransaction();
 
+    const supplierErr = await assertSupplierBelongsToProject(conn, projectId, supplier_id);
+    if (supplierErr) {
+      await conn.rollback();
+      return res.status(400).json({ error: supplierErr });
+    }
+
     let budgetItemId = null;
     if (planning_line_id) {
       const { rows: plRows } = await conn.query(
@@ -446,6 +466,12 @@ router.patch('/:id/purchase-orders/:poId', async (req, res, next) => {
     if (errors.length > 0) {
       await conn.rollback();
       return res.status(400).json({ error: errors });
+    }
+
+    const supplierErr = await assertSupplierBelongsToProject(conn, projectId, merged.supplier_id);
+    if (supplierErr) {
+      await conn.rollback();
+      return res.status(400).json({ error: supplierErr });
     }
 
     let budgetItemId = merged.budget_item_id;
