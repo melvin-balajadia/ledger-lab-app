@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSession, signOut } from "../hooks/useAuth";
 import { clearAllTableStates } from "../hooks/useTableUrlState";
 import {
@@ -38,9 +39,17 @@ function initials(name: string) {
 export function Layout() {
   const navigate = useNavigate();
   const { session } = useSession();
+  const queryClient = useQueryClient();
 
   async function handleLogout() {
+    // QueryClient is a module-level singleton (main.tsx), so its cache
+    // outlives the session: without clearing it, the next account to sign in
+    // in this same tab is served the previous account's ['me'] /
+    // ['project-summary', N] data until each background refetch lands.
+    // Cleared AFTER signOut so nothing in flight can repopulate it with the
+    // old token's results.
     await signOut();
+    queryClient.clear();
     clearAllTableStates();
     navigate("/login", { replace: true });
   }
