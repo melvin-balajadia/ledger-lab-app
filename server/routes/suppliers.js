@@ -13,7 +13,6 @@ function mapDbError(err) {
   return null;
 }
 
-// Not project-scoped -- suppliers has no project_id column.
 router.get('/', async (req, res, next) => {
   try {
     const q = req.query.q || '';
@@ -23,10 +22,10 @@ router.get('/', async (req, res, next) => {
       const { rows } = await pool.query(
         `SELECT id, name, normalized_name, category, is_active
          FROM suppliers
-         WHERE is_active = 1 AND (name LIKE ? OR normalized_name LIKE ?)
+         WHERE is_active = 1 AND (name LIKE ? OR normalized_name LIKE ?) AND project_id = ?
          ORDER BY name
          LIMIT 20`,
-        [`%${q}%`, `%${q}%`]
+        [`%${q}%`, `%${q}%`, req.projectId]
       );
       return res.json(rows);
     }
@@ -35,8 +34,8 @@ router.get('/', async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.pageSize, 10) || 50));
 
-    const where = [];
-    const params = [];
+    const where = ['project_id = ?'];
+    const params = [req.projectId];
     if (q) {
       where.push('(name LIKE ? OR normalized_name LIKE ?)');
       params.push(`%${q}%`, `%${q}%`);
@@ -79,10 +78,10 @@ router.post('/', async (req, res, next) => {
     await conn.beginTransaction();
 
     const result = await conn.query(
-      `INSERT INTO suppliers (name, normalized_name, tin, is_active, created_by)
-       VALUES (?, ?, ?, 1, ?)
+      `INSERT INTO suppliers (name, normalized_name, tin, is_active, created_by, project_id)
+       VALUES (?, ?, ?, 1, ?, ?)
        RETURNING id`,
-      [String(name).trim(), normalizedName, tin || null, appUser]
+      [String(name).trim(), normalizedName, tin || null, appUser, req.projectId]
     );
     const insertId = result.rows[0].id;
 
@@ -95,7 +94,7 @@ router.post('/', async (req, res, next) => {
     });
 
     await conn.commit();
-    const { rows } = await pool.query('SELECT * FROM suppliers WHERE id = ?', [insertId]);
+    const { rows } = await pool.query('SELECT * FROM suppliers WHERE id = ? AND project_id = ?', [insertId, req.projectId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     await conn.rollback();
@@ -114,7 +113,7 @@ router.patch('/:id', async (req, res, next) => {
   try {
     await conn.beginTransaction();
 
-    const { rows: existingRows } = await conn.query('SELECT * FROM suppliers WHERE id = ? FOR UPDATE', [id]);
+    const { rows: existingRows } = await conn.query('SELECT * FROM suppliers WHERE id = ? AND project_id = ? FOR UPDATE', [id, req.projectId]);
     if (existingRows.length === 0) {
       await conn.rollback();
       return res.status(404).json({ error: 'Supplier not found' });
@@ -133,8 +132,8 @@ router.patch('/:id', async (req, res, next) => {
 
     await conn.query(
       `UPDATE suppliers SET name = ?, normalized_name = ?, tin = ?, is_active = ?, updated_by = ?
-       WHERE id = ?`,
-      [name, normalizedName, tin, isActive, appUser, id]
+       WHERE id = ? AND project_id = ?`,
+      [name, normalizedName, tin, isActive, appUser, id, req.projectId]
     );
 
     await recordAudit(conn, {
@@ -147,7 +146,7 @@ router.patch('/:id', async (req, res, next) => {
     });
 
     await conn.commit();
-    const { rows } = await pool.query('SELECT * FROM suppliers WHERE id = ?', [id]);
+    const { rows } = await pool.query('SELECT * FROM suppliers WHERE id = ? AND project_id = ?', [id, req.projectId]);
     res.json(rows[0]);
   } catch (err) {
     await conn.rollback();

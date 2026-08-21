@@ -15,20 +15,18 @@ function buildFullName({ last_name: lastName, first_name: firstName, middle_name
   return `${lastName}, ${firstName}${middle}`.toUpperCase().trim();
 }
 
-// Not project-scoped in a real sense -- workers has no project_id column.
-// This app is single-project (see CLAUDE.md), and project 2 has zero
-// payroll_entries today, so listing every worker is equivalent to listing
-// project 1's workers. A newly created worker has no entries yet, so an
-// EXISTS(payroll_entries) filter here would hide them until assigned to a
-// payroll period -- wrong order of operations for "add a new hire".
+// Scoped to workers.project_id (added in Task 2's migration). A newly
+// created worker has no payroll_entries yet, so filtering by w.project_id
+// directly (rather than an EXISTS(payroll_entries) filter) still lists it
+// right away -- correct order of operations for "add a new hire".
 router.get('/:id/workers', async (req, res, next) => {
   try {
-    const projectId = req.params.id;
+    const projectId = req.projectId;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(req.query.pageSize, 10) || 50));
 
-    const where = [];
-    const params = [];
+    const where = ['w.project_id = ?'];
+    const params = [projectId];
 
     if (req.query.search) {
       where.push('w.full_name LIKE ?');
@@ -83,7 +81,8 @@ router.get('/:id/workers', async (req, res, next) => {
 router.get('/:id/workers/positions', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT DISTINCT position FROM workers WHERE position IS NOT NULL AND position <> '' ORDER BY position`
+      `SELECT DISTINCT position FROM workers WHERE position IS NOT NULL AND position <> '' AND project_id = ? ORDER BY position`,
+      [req.projectId]
     );
     res.json({ values: rows.map((r) => r.position) });
   } catch (err) {
@@ -106,8 +105,8 @@ router.post('/:id/workers', async (req, res, next) => {
 
     const result = await conn.query(
       `INSERT INTO workers
-         (employee_no, last_name, first_name, middle_name, full_name, position, date_hired, is_active, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+         (employee_no, last_name, first_name, middle_name, full_name, position, date_hired, is_active, created_by, project_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
        RETURNING id`,
       [
         employeeNo || null,
@@ -118,6 +117,7 @@ router.post('/:id/workers', async (req, res, next) => {
         position || null,
         dateHired || null,
         appUser,
+        req.projectId,
       ]
     );
     const insertId = result.rows[0].id;
@@ -131,7 +131,7 @@ router.post('/:id/workers', async (req, res, next) => {
     });
 
     await conn.commit();
-    const { rows } = await pool.query('SELECT * FROM workers WHERE id = ?', [insertId]);
+    const { rows } = await pool.query('SELECT * FROM workers WHERE id = ? AND project_id = ?', [insertId, req.projectId]);
     res.status(201).json(rows[0]);
   } catch (err) {
     await conn.rollback();
@@ -148,7 +148,7 @@ router.patch('/:id/workers/:workerId', async (req, res, next) => {
   try {
     await conn.beginTransaction();
 
-    const { rows: existingRows } = await conn.query('SELECT * FROM workers WHERE id = ? FOR UPDATE', [workerId]);
+    const { rows: existingRows } = await conn.query('SELECT * FROM workers WHERE id = ? AND project_id = ? FOR UPDATE', [workerId, req.projectId]);
     if (existingRows.length === 0) {
       await conn.rollback();
       return res.status(404).json({ error: 'Worker not found' });
@@ -185,8 +185,8 @@ router.patch('/:id/workers/:workerId', async (req, res, next) => {
       `UPDATE workers SET
          last_name = ?, first_name = ?, middle_name = ?, full_name = ?, employee_no = ?,
          position = ?, date_hired = ?, is_active = ?, date_separated = ?, updated_by = ?
-       WHERE id = ?`,
-      [lastName, firstName, middleName, fullName, employeeNo, position, dateHired, isActive, dateSeparated, appUser, workerId]
+       WHERE id = ? AND project_id = ?`,
+      [lastName, firstName, middleName, fullName, employeeNo, position, dateHired, isActive, dateSeparated, appUser, workerId, req.projectId]
     );
 
     await recordAudit(conn, {
@@ -199,7 +199,7 @@ router.patch('/:id/workers/:workerId', async (req, res, next) => {
     });
 
     await conn.commit();
-    const { rows } = await pool.query('SELECT * FROM workers WHERE id = ?', [workerId]);
+    const { rows } = await pool.query('SELECT * FROM workers WHERE id = ? AND project_id = ?', [workerId, req.projectId]);
     res.json(rows[0]);
   } catch (err) {
     await conn.rollback();
@@ -214,8 +214,8 @@ router.get('/:id/workers/:workerId/payroll-entries', async (req, res, next) => {
     const { rows: workerRows } = await pool.query(
       `SELECT w.id, w.employee_no, w.full_name, w.position, w.is_active, w.date_separated
        FROM workers w
-       WHERE w.id = ?`,
-      [req.params.workerId]
+       WHERE w.id = ? AND w.project_id = ?`,
+      [req.params.workerId, req.projectId]
     );
     if (workerRows.length === 0) return res.status(404).json({ error: 'not found' });
 
@@ -228,7 +228,7 @@ router.get('/:id/workers/:workerId/payroll-entries', async (req, res, next) => {
        LEFT JOIN planning_lines pl ON pl.id = pe.planning_line_id
        WHERE pe.worker_id = ? AND pe.project_id = ? AND pe.voided_at IS NULL
        ORDER BY pp.period_start`,
-      [req.params.workerId, req.params.id]
+      [req.params.workerId, req.projectId]
     );
 
     res.json({ worker: workerRows[0], entries: rows });
