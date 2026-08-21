@@ -5,7 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 
-document.title = 'LedgerLab — Sample Cold Storage Expansion'
+document.title = 'LedgerLab — Project Cost & Payroll Tracker'
 
 const queryClient = new QueryClient()
 

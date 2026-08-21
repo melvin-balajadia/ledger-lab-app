@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuthMe, useLogout } from "../hooks/useAuth";
+import { useSession, signOut } from "../hooks/useAuth";
 import { clearAllTableStates } from "../hooks/useTableUrlState";
 import { BackupButton } from "./BackupButton";
 import {
@@ -38,16 +38,15 @@ function initials(name: string) {
 
 export function Layout() {
   const navigate = useNavigate();
-  const { data: user } = useAuthMe();
-  const logout = useLogout();
+  const { session } = useSession();
 
   async function handleLogout() {
-    await logout.mutateAsync();
+    await signOut();
     clearAllTableStates();
     navigate("/login", { replace: true });
   }
 
-  const displayName = user?.full_name ?? user?.username ?? "";
+  const displayName = session?.user?.email ?? "";
 
   return (
     <div className="mx-auto flex max-w-295 flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
@@ -55,7 +54,7 @@ export function Layout() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <span className="text-xs font-semibold tracking-wide text-accent uppercase">
-              Sample Logistics Corp. — Cost & Payroll Monitor
+              Project Cost & Payroll Tracker
             </span>
             <h1 className="font-display text-2xl font-semibold text-balance text-ink sm:text-3xl print:hidden">
               LedgerLab - Cost Management System
@@ -69,13 +68,13 @@ export function Layout() {
             {/* Print only. These figures move, so a printout going up the
                 approval chain has to say when it was taken and by whom --
                 otherwise two copies are indistinguishable. */}
-            {user && (
+            {session && (
               <p className="hidden text-xs text-ink-muted print:block">
                 Generated {generatedAt()} by {displayName}
               </p>
             )}
           </div>
-          {user && (
+          {session && (
             <div className="no-print flex items-center gap-3">
               <BackupButton />
               <div className="flex items-center gap-2.5 rounded-full border border-rule py-1 pr-3 pl-1 bg-surface">
