@@ -1056,7 +1056,52 @@ git commit -m "Add sign-up flow, Google sign-in, and demo access to the login pa
 - SQL update via Supabase SQL Editor (no file — direct data change)
 
 **Interfaces:**
-- None (copy-only changes).
+- Consumes: `useSession`, `signOut` from Task 7's `useAuth.ts` (see Step 0 below — a gap this
+  plan missed until now).
+
+- [ ] **Step 0: Fix `Layout.tsx`'s broken auth hook imports (plan gap, not originally scoped
+  to any task)**
+
+`client/src/components/Layout.tsx` still imports `useAuthMe, useLogout` from `../hooks/useAuth`
+— both were deleted when Task 7 replaced that file's entire contents, and no task since has
+fixed this file's usage. It currently fails to typecheck. Read the current file fully first,
+then apply this replacement:
+
+```tsx
+// before
+import { useAuthMe, useLogout } from "../hooks/useAuth";
+...
+const { data: user } = useAuthMe();
+const logout = useLogout();
+...
+async function handleLogout() {
+  await logout.mutateAsync();
+  clearAllTableStates();
+  navigate("/login", { replace: true });
+}
+const displayName = user?.full_name ?? user?.username ?? "";
+```
+
+```tsx
+// after
+import { useSession, signOut } from "../hooks/useAuth";
+...
+const { session } = useSession();
+...
+async function handleLogout() {
+  await signOut();
+  clearAllTableStates();
+  navigate("/login", { replace: true });
+}
+const displayName = session?.user?.email ?? "";
+```
+
+Every other place in the file that checks `user` (e.g. `{user && (...)}` guarding the
+logged-in-only header controls) should check `session` instead — there is no more `full_name`/
+`username` distinction (the old local `users` table is gone; Supabase only gives you `email`
+unless you set custom user metadata, which is out of scope here). The `initials(name)` helper
+further down the file can stay as-is — it degrades gracefully to a single initial for an email
+with no space in it, which is fine.
 
 - [ ] **Step 1: Update the demo project's name/company**
 
