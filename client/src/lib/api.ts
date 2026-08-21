@@ -64,11 +64,11 @@ export async function postFormData<T>(path: string, formData: FormData): Promise
   return json as T;
 }
 
-// Client and server run on different origins, so the session cookie
-// (SameSite=Lax) is never attached to a plain cross-origin <img src>. Fetch
-// the bytes with credentials instead and hand the browser an object URL.
+// A plain <img src> can't carry an Authorization header, so fetch the bytes
+// with the bearer token instead and hand the browser an object URL.
 export async function fetchImageUrl(path: string): Promise<string> {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}${path}`, { headers });
   if (!res.ok) throw new Error(`${path} failed: ${res.status} ${res.statusText}`);
   const blob = await res.blob();
   return URL.createObjectURL(blob);
