@@ -1,7 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useSession, signOut } from "../hooks/useAuth";
 import { clearAllTableStates } from "../hooks/useTableUrlState";
-import { BackupButton } from "./BackupButton";
 import {
   IconAlertCircle,
   IconBox,
@@ -76,7 +75,6 @@ export function Layout() {
           </div>
           {session && (
             <div className="no-print flex items-center gap-3">
-              <BackupButton />
               <div className="flex items-center gap-2.5 rounded-full border border-rule py-1 pr-3 pl-1 bg-surface">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-bold text-accent">
                   {initials(displayName)}
