@@ -15,15 +15,20 @@ const STATS = [
   { value: "Private", label: "data, isolated per account" },
 ];
 
-// Fake numbers for the dashboard mockup below -- not a real project's figures.
-const MOCK_KPIS = [
-  { label: "Budget", value: "₱150.0M" },
-  { label: "Committed", value: "₱112.3M" },
-  { label: "Disbursed", value: "₱84.6M" },
-  { label: "Remaining", value: "₱37.7M" },
+const STEPS = [
+  {
+    title: "Enter a transaction",
+    body: "Log a replenishment, PO payment, cash advance, or payroll entry against a budget line.",
+  },
+  {
+    title: "It's categorized automatically",
+    body: "Tagged to its budget item and JPL/WBS planning line. Anything unclear goes to a review queue instead of blocking you.",
+  },
+  {
+    title: "Your dashboard updates instantly",
+    body: "Budget vs. commitment vs. disbursement recalculates project-wide — no manual reconciliation.",
+  },
 ];
-const MOCK_BAR_HEIGHTS = [40, 65, 50, 80, 60, 90, 70];
-const MOCK_ROW_WIDTHS = [85, 65, 75];
 
 const HOW_IT_WORKS = [
   {
@@ -152,38 +157,19 @@ export function Home() {
         </section>
 
         <section className="mx-auto max-w-295 px-4 py-12 sm:px-6">
-          <div className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-rule bg-surface shadow-card">
-            <div className="flex items-center gap-1.5 border-b border-rule bg-surface-2 px-4 py-2.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-rule-strong" />
-              <span className="h-2.5 w-2.5 rounded-full bg-rule-strong" />
-              <span className="h-2.5 w-2.5 rounded-full bg-rule-strong" />
-            </div>
-            <div className="grid gap-4 p-6 sm:grid-cols-4">
-              {MOCK_KPIS.map((kpi) => (
-                <div key={kpi.label} className="rounded-md border border-rule bg-canvas p-3">
-                  <p className="text-xs text-ink-faint">{kpi.label}</p>
-                  <p className="mt-1 text-lg font-semibold text-ink">{kpi.value}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex h-24 items-end gap-2 px-6 pb-6">
-              {MOCK_BAR_HEIGHTS.map((height, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-t-sm bg-accent"
-                  style={{ height: `${height}%` }}
-                />
-              ))}
-            </div>
-            <div className="flex flex-col gap-2.5 border-t border-rule px-6 py-5">
-              {MOCK_ROW_WIDTHS.map((width, i) => (
-                <div
-                  key={i}
-                  className="h-2.5 rounded-full bg-rule-strong"
-                  style={{ width: `${width}%` }}
-                />
-              ))}
-            </div>
+          <h2 className="mb-6 font-display text-2xl font-semibold tracking-tight text-ink">
+            From entry to dashboard
+          </h2>
+          <div className="grid gap-6 sm:grid-cols-3">
+            {STEPS.map((step, i) => (
+              <div key={step.title} className="flex flex-col gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent font-display text-sm font-semibold text-white">
+                  {i + 1}
+                </span>
+                <p className="text-sm font-semibold text-ink">{step.title}</p>
+                <p className="text-sm text-ink-muted">{step.body}</p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -243,11 +229,19 @@ export function Home() {
           <h2 className="mb-6 font-display text-2xl font-semibold tracking-tight text-ink">
             Frequently asked questions
           </h2>
-          <dl className="mx-auto flex max-w-2xl flex-col divide-y divide-rule rounded-md border border-rule bg-surface shadow-card">
-            {FAQS.map((item) => (
-              <div key={item.q} className="p-5">
-                <dt className="mb-1.5 text-sm font-semibold text-ink">{item.q}</dt>
-                <dd className="text-sm text-ink-muted">{item.a}</dd>
+          <dl className="mx-auto flex max-w-2xl flex-col gap-4">
+            {FAQS.map((item, i) => (
+              <div
+                key={item.q}
+                className="flex gap-4 rounded-md border border-rule bg-surface p-5 shadow-card"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-2 font-display text-xs font-semibold text-ink-muted">
+                  {i + 1}
+                </span>
+                <div>
+                  <dt className="mb-1.5 text-sm font-semibold text-ink">{item.q}</dt>
+                  <dd className="text-sm text-ink-muted">{item.a}</dd>
+                </div>
               </div>
             ))}
           </dl>
