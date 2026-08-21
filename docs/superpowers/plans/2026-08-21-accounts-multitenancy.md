@@ -1011,23 +1011,16 @@ async function handleSubmit(event: React.FormEvent) {
 async function handleGoogleSignIn() {
   await signInWithGoogle(); // redirects away; no navigate() call needed here
 }
-
-async function handleDemoSignIn() {
-  setError(null);
-  try {
-    await signInWithPassword('demo@ledgerlab.app', '<demo-password>');
-    navigate('/', { replace: true });
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Demo sign-in failed');
-  }
-}
 ```
 
-Add a "Continue with Google" button calling `handleGoogleSignIn`, a "View demo" button calling
-`handleDemoSignIn`, and a link to `/signup` for new accounts. Change the header text from
-"SAMPLE LOGISTICS CORP. — COST & PAYROLL MONITOR" to something generic, e.g. "Track project
-costs, purchase orders, and payroll in one place." (spec decision 5 — no company/industry
-framing).
+Add a "Continue with Google" button calling `handleGoogleSignIn`, a link to `/signup` for new
+accounts, and a **"View demo" link** — this is a plain `<Link to="/demo">` (React Router),
+**not a sign-in of any kind**. No demo password exists anywhere in this codebase (revised
+after the design conversation: baking real credentials into public client code was rejected in
+favor of a genuinely public, unauthenticated, read-only demo — see Task 14). Change the header
+text from "SAMPLE LOGISTICS CORP. — COST & PAYROLL MONITOR" to something generic, e.g. "Track
+project costs, purchase orders, and payroll in one place." (spec decision 5 — no company/
+industry framing).
 
 - [ ] **Step 2: Write `Signup.tsx`**
 
@@ -1041,9 +1034,10 @@ Add `<Route path="signup" element={<Signup />} />` in `App.tsx`, alongside `logi
 
 - [ ] **Step 4: Verify**
 
-Manually test all three entry paths: email/password sign-up (check for the confirmation
-message), Google sign-in (completes the OAuth redirect and lands signed in), and "View demo"
-(signs in as the fixed demo account immediately).
+Manually test the entry paths this task actually builds: email/password sign-up (check for the
+confirmation message) and Google sign-in (completes the OAuth redirect and lands signed in).
+"View demo" just navigates to `/demo` — that route doesn't exist until Task 14, so it 404s
+until then; that's expected at this point, not a defect in this task.
 
 - [ ] **Step 5: Commit**
 
@@ -1147,12 +1141,194 @@ git commit -m "Remove Backup now feature entirely — not applicable to a multi-
 
 ---
 
-## Final verification (after all 13 tasks)
+## Task 14: Public read-only demo access (added after Task 11 design discussion)
+
+**Why this exists:** the original design assumed "View demo" would sign in as a fixed shared
+Supabase account. That means a real password living in public client-side code — anyone
+opening dev tools could extract it and use it to edit/delete the demo project's data. Revised
+decision: no demo credentials anywhere. Visitors can view the demo project's Overview dashboard
+with zero login step; every write action still requires a real account, enforced server-side.
+
+**Files:**
+- Modify: `server/middleware/requireAuth.js`
+- Modify: `server/middleware/resolveProject.js`
+- Modify: `client/src/hooks/useProjectData.ts` (add a context, don't replace `useCurrentProject`'s existing behavior)
+- Create: `client/src/pages/Demo.tsx`
+- Modify: `client/src/App.tsx` (add the `/demo` route, outside `ProtectedRoute`)
+
+**Interfaces:**
+- Consumes: `useProjectSummary`/`useProjectKpis` and the other Overview-page hooks (unchanged) — they still call `useCurrentProject()`, which this task extends.
+- Produces: `DemoProjectContext` (a React Context exported from `useProjectData.ts`) — `Demo.tsx` is the only consumer.
+
+- [ ] **Step 1: Allow anonymous read access to exactly one project, server-side**
+
+```js
+// server/middleware/requireAuth.js
+const supabaseAdmin = require('../lib/supabaseAdmin');
+
+// The one project anyone can view without signing in. This app only ever
+// has one such project by design (the fictional seed data) -- hardcoded
+// rather than configurable, since there is exactly one of these ever.
+const PUBLIC_DEMO_PROJECT_ID = 1;
+
+async function requireAuth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+
+  if (!token) {
+    // Anonymous GETs to the public demo project's own routes are allowed,
+    // read-only. Anything else (no token + not a GET, or not the demo
+    // project) still requires real auth.
+    if (req.method === 'GET' && Number(req.params.id) === PUBLIC_DEMO_PROJECT_ID) {
+      req.projectId = PUBLIC_DEMO_PROJECT_ID;
+      req.isAnonymousDemo = true;
+      return next();
+    }
+    return res.status(401).json({ error: 'not authenticated' });
+  }
+
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data.user) return res.status(401).json({ error: 'not authenticated' });
+
+  req.user = { id: data.user.id, email: data.user.email };
+  next();
+}
+
+module.exports = { requireAuth };
+```
+
+```js
+// server/middleware/resolveProject.js — add this as the FIRST line inside the function body
+async function resolveProject(req, res, next) {
+  if (req.isAnonymousDemo) return next(); // requireAuth already set req.projectId
+
+  // ...rest of the existing function body is unchanged below this point
+```
+
+This only affects routes shaped `/api/projects/:id/...` (the ones with an `:id` param
+`requireAuth` can check) — `/api/suppliers` and `/api/meta` have no `:id` in their URL, so they
+stay fully gated behind real auth even in this change. That means the public demo won't show a
+populated Suppliers page or supplier-name dropdowns; that's a known, acceptable scope limit for
+this task, not a bug — the Overview dashboard (the actual target of this task) doesn't need
+either.
+
+- [ ] **Step 2: Add a client-side override so `useCurrentProject()` can skip `/api/me` entirely**
+
+```ts
+// client/src/hooks/useProjectData.ts — add near the top, keep everything else in this file unchanged
+import { createContext, useContext } from 'react';
+
+export const DemoProjectContext = createContext<number | null>(null);
+```
+
+Then change `useCurrentProject()`'s existing body to check the context first:
+
+```ts
+export function useCurrentProject() {
+  const demoProjectId = useContext(DemoProjectContext);
+  const { data, isLoading } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => fetchJson<MeResponse>('/api/me'),
+    enabled: demoProjectId === null, // never call the authenticated /api/me in demo mode
+  });
+
+  if (demoProjectId !== null) {
+    return { projectId: demoProjectId, needsSetup: false, isLoading: false };
+  }
+  return {
+    projectId: data?.projectId,
+    needsSetup: data?.needsSetup ?? false,
+    isLoading,
+  };
+}
+```
+
+Every existing hook that calls `useCurrentProject()` (all of Task 9's 17 files) gets the demo
+project id for free when rendered under `DemoProjectContext.Provider` — no other file changes.
+
+- [ ] **Step 3: Build the public demo page**
+
+Read `client/src/pages/Overview.tsx` first. Wrap it with the context provider and a small
+banner explaining this is a read-only public demo:
+
+```tsx
+// client/src/pages/Demo.tsx
+import { Link } from 'react-router-dom';
+import { DemoProjectContext } from '../hooks/useProjectData';
+import { Overview } from './Overview';
+
+const DEMO_PROJECT_ID = 1;
+
+export function Demo() {
+  return (
+    <DemoProjectContext.Provider value={DEMO_PROJECT_ID}>
+      <div className="mx-auto flex max-w-295 flex-col gap-4 px-4 py-6 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-rule bg-surface-2 px-4 py-3 text-sm">
+          <span className="text-ink-muted">
+            You're viewing a public demo with sample data — nothing here is real, and no
+            changes save.
+          </span>
+          <Link to="/signup" className="font-medium text-accent hover:underline">
+            Sign up to create your own project →
+          </Link>
+        </div>
+        <Overview />
+      </div>
+    </DemoProjectContext.Provider>
+  );
+}
+```
+
+Do not reuse `Layout` here — `Layout` assumes a real logged-in session (user avatar, log out
+button, nav to other authenticated pages) that doesn't apply to an anonymous visitor. If reading
+`Overview.tsx` reveals it depends on something only `Layout` provides (check for any context
+Overview reads that isn't just its own hooks), adapt this wrapper accordingly and note what you
+found — don't silently duplicate `Layout`'s auth-dependent UI just to satisfy an import.
+
+- [ ] **Step 4: Add the route, outside `ProtectedRoute`**
+
+In `client/src/App.tsx`, add `<Route path="demo" element={<Demo />} />` as a sibling of the
+`login`/`signup` routes — NOT nested inside `<Route element={<ProtectedRoute />}>`, since this
+page must render with no session at all.
+
+- [ ] **Step 5: Verify**
+
+```bash
+cd client && npx tsc -b --force
+```
+Expected: no new errors from this task's files.
+
+Then, with the server running, confirm anonymous access is correctly scoped:
+```bash
+curl -s http://localhost:4000/api/projects/1/summary
+```
+Expected: the demo project's real summary data (200), no `Authorization` header sent — this
+proves the anonymous-GET-to-project-1 path works.
+```bash
+curl -s -X PATCH http://localhost:4000/api/projects/1/budget-items/1 -H "Content-Type: application/json" -d '{"description":"hacked"}'
+```
+Expected: 401 — proves writes are still blocked with no token, even against the public project.
+```bash
+curl -s http://localhost:4000/api/projects/2/summary
+```
+Expected: 401 — proves anonymous access does NOT extend to any other project id.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add server/middleware/requireAuth.js server/middleware/resolveProject.js client/src/hooks/useProjectData.ts client/src/pages/Demo.tsx client/src/App.tsx
+git commit -m "Add public read-only demo access, no shared credentials required"
+```
+
+---
+
+## Final verification (after all 14 tasks)
 
 - [ ] Sign up a brand-new account, confirm the full flow: signup → email confirmation message
   → sign in → setup wizard → empty Overview → create one budget item → it persists on refresh.
-- [ ] Sign in as the demo account, confirm all existing seed data still renders exactly as
-  before this plan started.
+- [ ] Visit `/demo` with no session at all (a fresh/incognito browser), confirm the demo
+  project's Overview dashboard renders with the existing seed data, and confirm no write
+  action succeeds from that page (any attempted edit should fail cleanly, not silently).
 - [ ] Confirm a second brand-new test account cannot see the first test account's or the demo
   account's budget items, suppliers, or workers.
 - [ ] Confirm `/api/auth/login` (the old route) 404s and no code anywhere still imports
