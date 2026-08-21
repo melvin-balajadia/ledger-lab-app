@@ -177,7 +177,8 @@ const FAQS = [
   },
 ];
 
-const H2 = "mb-6 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl";
+const H2 =
+  "mb-6 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl";
 const EYEBROW =
   "mb-5 flex items-center gap-3 font-mono text-[11px] font-medium tracking-widest text-ink-faint uppercase after:h-px after:flex-1 after:bg-rule after:content-['']";
 
@@ -187,9 +188,9 @@ function Nav() {
       <div className="mx-auto flex max-w-295 items-center justify-between px-4 py-4 sm:px-6">
         <span className="flex items-center gap-2.5 font-display text-lg font-semibold tracking-tight text-ink">
           <span className="flex h-4 items-end gap-0.5" aria-hidden="true">
-            <span className="h-4 w-[3px] rounded-[1px] bg-accent" />
-            <span className="h-2.5 w-[3px] rounded-[1px] bg-accent-strong" />
-            <span className="h-1.5 w-[3px] rounded-[1px] bg-ink-faint" />
+            <span className="h-4 w-0.75 rounded-[1px] bg-accent" />
+            <span className="h-2.5 w-0.75 rounded-[1px] bg-accent-strong" />
+            <span className="h-1.5 w-0.75 rounded-[1px] bg-ink-faint" />
           </span>
           LedgerLab
         </span>
@@ -219,17 +220,14 @@ function Hero() {
     <section className="mx-auto max-w-295 px-4 py-16 sm:px-6 sm:py-24">
       <div className="grid items-center gap-10 lg:grid-cols-2">
         <div>
-          <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent-soft px-3.5 py-1.5 font-mono text-xs text-accent">
-            <span aria-hidden="true">₱</span> Built for Philippine project teams —{" "}
-            <span className="font-display font-semibold">12% VAT handled</span>
-          </p>
           <h1 className="mb-4 max-w-xl font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
             Project costs, purchase orders, and payroll —{" "}
-            <span className="text-accent">one ledger</span>, not three spreadsheets.
+            <span className="text-accent">one ledger</span>, not three
+            spreadsheets.
           </h1>
           <p className="mb-6 max-w-lg text-lg text-ink-muted">
-            Track budget against what's actually been committed and what's actually
-            been paid, without losing the difference between the two.
+            Track budget against what's actually been committed and what's
+            actually been paid, without losing the difference between the two.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Link to="/demo" className={buttonVariants.primary}>
@@ -240,7 +238,8 @@ function Hero() {
             </Link>
           </div>
           <p className="mt-4 font-mono text-xs text-ink-faint">
-            No account needed for the demo · Free to start · Runs in your browser
+            No account needed for the demo · Free to start · Runs in your
+            browser
           </p>
         </div>
 
@@ -264,7 +263,7 @@ function Hero() {
                 }}
               >
                 <span
-                  className="relative h-[19px] w-[15px] shrink-0 rounded-[2px] border border-rule-strong bg-surface before:absolute before:inset-x-[3px] before:top-1 before:h-px before:bg-rule-strong before:shadow-[0_4px_0_var(--color-rule-strong),0_8px_0_var(--color-rule-strong)]"
+                  className="relative h-4.75 w-3.75 shrink-0 rounded-xs border border-rule-strong bg-surface before:absolute before:inset-x-0.75 before:top-1 before:h-px before:bg-rule-strong before:shadow-[0_4px_0_var(--color-rule-strong),0_8px_0_var(--color-rule-strong)]"
                   aria-hidden="true"
                 />
                 <span className="truncate font-mono text-xs text-ink-muted">
@@ -278,12 +277,15 @@ function Hero() {
           </div>
 
           <p className="my-4 flex items-center gap-2.5 font-mono text-[11px] tracking-widest text-ink-faint uppercase">
-            <span className="text-danger">&#8800;</span> Three files, three answers
+            <span className="text-danger">&#8800;</span> Three files, three
+            answers
           </p>
 
           <div
             className="home-anim overflow-hidden rounded-lg border border-accent bg-surface shadow-card"
-            style={{ animation: "home-settle .55s cubic-bezier(.22,.7,.3,1) .3s both" }}
+            style={{
+              animation: "home-settle .55s cubic-bezier(.22,.7,.3,1) .3s both",
+            }}
           >
             <div className="flex items-center gap-2.5 bg-accent px-4 py-3 text-white">
               <span className="flex h-3.5 items-end gap-0.5" aria-hidden="true">
@@ -302,20 +304,30 @@ function Hero() {
             </div>
             <div className="grid grid-cols-3 divide-x divide-rule">
               <div className="p-3 sm:p-4">
-                <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">Budget</p>
+                <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">
+                  Budget
+                </p>
                 <p className="text-sm font-semibold text-ink">Approved</p>
               </div>
               <div className="p-3 sm:p-4">
-                <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">Committed</p>
+                <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">
+                  Committed
+                </p>
                 <p className="text-sm font-semibold text-ink">Awarded</p>
               </div>
               <div className="p-3 sm:p-4">
-                <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">Disbursed</p>
+                <p className="mb-1.5 font-mono text-[10px] tracking-widest text-ink-faint uppercase">
+                  Disbursed
+                </p>
                 <p className="text-sm font-semibold text-ink">Paid out</p>
               </div>
             </div>
             <div className="border-t border-rule bg-accent-soft px-4 py-2.5 text-sm text-ink-muted">
-              Every entry moves all three at once — <b className="text-accent font-semibold">no reconciliation step</b>.
+              Every entry moves all three at once —{" "}
+              <b className="text-accent font-semibold">
+                no reconciliation step
+              </b>
+              .
             </div>
           </div>
         </div>
@@ -338,10 +350,13 @@ function DemoInvitation() {
             Open a real project, not a tour.
           </h3>
           <p className="text-sm text-ink-muted">
-            The sample project has budget lines, suppliers, and planning codes already
-            entered, so the numbers are real the moment you look.
+            The sample project has budget lines, suppliers, and planning codes
+            already entered, so the numbers are real the moment you look.
           </p>
-          <Link to="/demo" className={`${buttonVariants.primary} mt-auto self-start`}>
+          <Link
+            to="/demo"
+            className={`${buttonVariants.primary} mt-auto self-start`}
+          >
             Open the live demo
           </Link>
           <p className="font-mono text-[11px] text-ink-faint">
@@ -354,7 +369,9 @@ function DemoInvitation() {
               key={item.title}
               className="border-b border-rule px-6 py-4 last:border-b-0"
             >
-              <p className="mb-1 text-sm font-semibold text-ink">{item.title}</p>
+              <p className="mb-1 text-sm font-semibold text-ink">
+                {item.title}
+              </p>
               <p className="text-sm text-ink-muted">{item.body}</p>
             </div>
           ))}
@@ -395,8 +412,8 @@ function Stepper() {
       <p className={EYEBROW}>From entry to dashboard</p>
       <h2 className={H2}>Three keystrokes, not three reconciliations.</h2>
       <p className="mb-8 max-w-xl text-ink-muted">
-        Every entry lands on a budget line, gets classified, and moves the project
-        totals the same second.
+        Every entry lands on a budget line, gets classified, and moves the
+        project totals the same second.
       </p>
       <div className="grid gap-8 sm:grid-cols-3">
         {STEPS.map((step, i) => (
@@ -417,7 +434,9 @@ function HowItWorks() {
   return (
     <section className="mx-auto max-w-295 px-4 py-12 sm:px-6">
       <p className={EYEBROW}>How it works</p>
-      <h2 className={H2}>The difference between the three numbers is the whole job.</h2>
+      <h2 className={H2}>
+        The difference between the three numbers is the whole job.
+      </h2>
 
       <div className="mt-8 grid gap-8 rounded-lg border border-rule bg-surface p-6 shadow-card sm:p-8 lg:grid-cols-2 lg:items-center">
         <div>
@@ -426,15 +445,20 @@ function HowItWorks() {
           </h3>
           <p className="text-sm text-ink-muted">
             Approving a budget, awarding a contract, and paying cash are three
-            different numbers. This tool keeps them separate instead of collapsing
-            them into one misleading total — so a line that's nearly fully committed
-            but only two-thirds paid never reads as headroom you don't have.
+            different numbers. This tool keeps them separate instead of
+            collapsing them into one misleading total — so a line that's nearly
+            fully committed but only two-thirds paid never reads as headroom you
+            don't have.
           </p>
           <p className="mt-4 border-t border-dashed border-rule-strong pt-3.5 text-sm text-ink-muted">
             Your dashboard carries both remainders:{" "}
-            <b className="font-mono font-semibold text-danger">remaining vs. contract</b>{" "}
+            <b className="font-mono font-semibold text-danger">
+              remaining vs. contract
+            </b>{" "}
             (how much can still be awarded) and{" "}
-            <b className="font-mono font-semibold text-danger">remaining vs. disbursed</b>{" "}
+            <b className="font-mono font-semibold text-danger">
+              remaining vs. disbursed
+            </b>{" "}
             (how much cash is left).
           </p>
         </div>
@@ -461,8 +485,9 @@ function HowItWorks() {
             </div>
           ))}
           <p className="mt-4 border-t border-dashed border-rule-strong pt-3.5 text-sm text-ink-muted">
-            Committed minus disbursed = <b className="font-mono font-semibold text-danger">31%</b> owed
-            but not yet paid
+            Committed minus disbursed ={" "}
+            <b className="font-mono font-semibold text-danger">31%</b> owed but
+            not yet paid
           </p>
         </div>
       </div>
@@ -521,7 +546,9 @@ function WhoItsFor() {
       <div className="grid gap-6 sm:grid-cols-3">
         {AUDIENCES.map((item) => (
           <div key={item.title} className="border-t-2 border-accent pt-4">
-            <p className="mb-2 text-sm font-semibold text-accent">{item.title}</p>
+            <p className="mb-2 text-sm font-semibold text-accent">
+              {item.title}
+            </p>
             <p className="text-sm text-ink-muted">{item.body}</p>
           </div>
         ))}
@@ -536,8 +563,8 @@ function Pricing() {
       <p className={EYEBROW}>Pricing</p>
       <h2 className={H2}>Free while LedgerLab is in early access.</h2>
       <p className="mb-6 max-w-xl text-ink-muted">
-        No trial clock, no card, no feature held back. If paid plans arrive later,
-        existing accounts get notice well before anything changes.
+        No trial clock, no card, no feature held back. If paid plans arrive
+        later, existing accounts get notice well before anything changes.
       </p>
       <div className="grid overflow-hidden rounded-lg border border-accent shadow-card sm:grid-cols-2">
         <div className="border-b border-rule bg-surface p-6 sm:border-r sm:border-b-0 sm:p-8">
@@ -551,8 +578,8 @@ function Pricing() {
             <span className="text-sm text-ink-faint">per month</span>
           </div>
           <p className="mb-5 max-w-xs text-sm text-ink-muted">
-            Create an account, set a budget, and run a real project on it. Your data
-            stays yours if you leave.
+            Create an account, set a budget, and run a real project on it. Your
+            data stays yours if you leave.
           </p>
           <Link to="/signup" className={buttonVariants.primary}>
             Create a free account
@@ -560,7 +587,10 @@ function Pricing() {
         </div>
         <div className="flex flex-col justify-center gap-3 bg-surface-2 p-6 sm:p-8">
           {PRICING_FEATURES.map((feature) => (
-            <div key={feature} className="flex items-start gap-2.5 text-sm text-ink-muted">
+            <div
+              key={feature}
+              className="flex items-start gap-2.5 text-sm text-ink-muted"
+            >
               <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
               {feature}
             </div>
@@ -576,7 +606,7 @@ function Faq() {
     <section className="mx-auto max-w-295 px-4 py-12 sm:px-6">
       <p className={EYEBROW}>Frequently asked questions</p>
       <h2 className={H2}>Before you sign up.</h2>
-      <div className="mx-auto mt-6 flex max-w-2xl flex-col divide-y divide-rule border-t border-rule">
+      <div className="mt-6 flex flex-col divide-y divide-rule border-t border-rule">
         {FAQS.map((item) => (
           <details key={item.q} className="group py-1">
             <summary className="flex cursor-pointer list-none items-center gap-4 py-3.5 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
@@ -585,7 +615,7 @@ function Faq() {
                 +
               </span>
             </summary>
-            <p className="pb-4 text-sm text-ink-muted">{item.a}</p>
+            <p className="max-w-3xl pb-4 text-sm text-ink-muted">{item.a}</p>
           </details>
         ))}
       </div>
@@ -604,7 +634,10 @@ function CloseCta() {
           Set a budget, enter one transaction, and watch all three ledgers move.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link to="/signup" className="inline-flex items-center gap-2 rounded-sm bg-white px-4 py-2 text-sm font-medium text-accent shadow-card hover:bg-accent-soft">
+          <Link
+            to="/signup"
+            className="inline-flex items-center gap-2 rounded-sm bg-white px-4 py-2 text-sm font-medium text-accent shadow-card hover:bg-accent-soft"
+          >
             Get started
           </Link>
           <Link
@@ -616,7 +649,10 @@ function CloseCta() {
         </div>
         <p className="text-sm text-white/70">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-white underline underline-offset-4">
+          <Link
+            to="/login"
+            className="font-medium text-white underline underline-offset-4"
+          >
             Sign in
           </Link>
         </p>
