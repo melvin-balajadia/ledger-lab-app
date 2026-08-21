@@ -1,5 +1,5 @@
-import { Link, useNavigate } from "react-router-dom";
-import { Button } from "../components/Button";
+import { Link } from "react-router-dom";
+import { buttonVariants } from "../components/Button";
 import { IconBox, IconGrid, IconReceipt, IconUsers } from "../components/icons";
 
 // Same ledger-paper flourish as Login.tsx/Signup.tsx -- see the comment there.
@@ -15,7 +15,7 @@ const HOW_IT_WORKS = [
   },
   {
     title: "Messy real-world entry, handled",
-    body: "A review queue holds anything that couldn't be confidently parsed or reconciled, so bad data gets fixed in place instead of silently dropped or blocking everything else.",
+    body: "A review queue holds anything that couldn't be matched or reconciled, so bad data gets fixed in place instead of silently dropped or blocking everything else.",
   },
   {
     title: "Split charges & retention, built in",
@@ -42,13 +42,11 @@ const FEATURES = [
   {
     Icon: IconUsers,
     title: "Payroll",
-    body: "Read-only payroll ledger with a reconciliation panel.",
+    body: "Payroll ledger with a weekly reconciliation panel.",
   },
 ];
 
 export function Home() {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen bg-canvas" style={LEDGER_BACKGROUND}>
       <header className="mx-auto flex max-w-295 items-center justify-between px-4 py-6 sm:px-6">
@@ -56,12 +54,12 @@ export function Home() {
           LedgerLab
         </span>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => navigate("/login")}>
+          <Link to="/login" className={buttonVariants.outline}>
             Sign in
-          </Button>
-          <Button variant="primary" onClick={() => navigate("/signup")}>
+          </Link>
+          <Link to="/signup" className={buttonVariants.primary}>
             Get started
-          </Button>
+          </Link>
         </div>
       </header>
 
@@ -75,15 +73,16 @@ export function Home() {
           been paid, without losing the difference between the two.
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={() => navigate("/signup")}>
+          <Link to="/signup" className={buttonVariants.primary}>
             Get started
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/demo")}>
+          </Link>
+          <Link to="/demo" className={buttonVariants.outline}>
             View live demo
-          </Button>
+          </Link>
         </div>
       </section>
 
+      <main>
       <section className="mx-auto max-w-295 px-4 py-12 sm:px-6">
         <h2 className="mb-6 font-display text-2xl font-semibold tracking-tight text-ink">
           How it works
@@ -124,12 +123,12 @@ export function Home() {
           Ready to see it on your own numbers?
         </h2>
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button variant="primary" onClick={() => navigate("/signup")}>
+          <Link to="/signup" className={buttonVariants.primary}>
             Get started
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/demo")}>
+          </Link>
+          <Link to="/demo" className={buttonVariants.outline}>
             View live demo
-          </Button>
+          </Link>
         </div>
         <p className="text-sm text-ink-muted">
           Already have an account?{" "}
@@ -138,6 +137,7 @@ export function Home() {
           </Link>
         </p>
       </section>
+      </main>
     </div>
   );
 }
