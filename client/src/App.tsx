@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
 import { Setup } from './pages/Setup';
 import { Overview } from './pages/Overview';
 import { Replenishments } from './pages/Replenishments';
@@ -19,6 +20,7 @@ function App() {
   return (
     <Routes>
       <Route path="login" element={<Login />} />
+      <Route path="signup" element={<Signup />} />
       <Route element={<ProtectedRoute />}>
         <Route path="setup" element={<Setup />} />
         <Route element={<Layout />}>

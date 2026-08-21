@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useLogin } from "../hooks/useAuth";
+import { Link, useNavigate } from "react-router-dom";
+import { signInWithGoogle, signInWithPassword } from "../hooks/useAuth";
 import { Button } from "../components/Button";
 import { IconEye, IconEyeOff } from "../components/icons";
 
@@ -16,15 +16,33 @@ const LEDGER_BACKGROUND = {
 
 export function Login() {
   const navigate = useNavigate();
-  const mutation = useLogin();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    await mutation.mutateAsync({ username, password });
-    navigate("/", { replace: true });
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await signInWithPassword(username, password); // username field now holds an email
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setError(null);
+    try {
+      await signInWithGoogle(); // redirects away; no navigate() call needed here
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Sign in failed");
+    }
   }
 
   return (
@@ -37,29 +55,26 @@ export function Login() {
         className="flex w-full max-w-md flex-col gap-5 rounded-lg border border-rule bg-surface p-7 shadow-card sm:p-9"
       >
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-semibold tracking-wide text-accent uppercase">
-            Sample Logistics Corp. — Cost & Payroll Monitor
-          </span>
           <h1 className="font-display text-[28px] font-semibold tracking-tight text-ink">
             LedgerLab
           </h1>
           <p className="text-sm text-ink-muted">
-            Budget, Purchase Orders, and Payrolls — all in one place.
+            Track project costs, purchase orders, and payroll in one place.
           </p>
         </div>
 
-        {mutation.error && (
+        {error && (
           <p className="rounded-sm border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
-            {mutation.error.message}
+            {error}
           </p>
         )}
 
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold tracking-wide text-ink-muted uppercase">
-            Username
+            Email
           </span>
           <input
-            type="text"
+            type="email"
             required
             autoFocus
             value={username}
@@ -98,16 +113,32 @@ export function Login() {
         <Button
           type="submit"
           variant="primary"
-          disabled={mutation.isPending}
+          disabled={isSubmitting}
           className="mt-1 justify-center"
         >
-          {mutation.isPending ? "Signing in…" : "Sign in"}
+          {isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleGoogleSignIn}
+          className="justify-center"
+        >
+          Continue with Google
+        </Button>
+
+        <p className="text-center text-sm text-ink-muted">
+          New here?{" "}
+          <Link to="/signup" className="font-medium text-accent hover:underline">
+            Create an account
+          </Link>
+        </p>
       </form>
 
-      <p className="text-xs text-ink-faint">
-        Portfolio demo — fictional data only.
-      </p>
+      <Link to="/demo" className="text-xs text-ink-faint hover:underline">
+        View demo
+      </Link>
     </div>
   );
 }
