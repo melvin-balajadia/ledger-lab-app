@@ -1,6 +1,8 @@
 const pool = require('../db');
 
 async function resolveProject(req, res, next) {
+  if (req.isAnonymousDemo) return next(); // requireAuth already set req.projectId
+
   try {
     const { rows } = await pool.query('SELECT id FROM projects WHERE owner_id = $1', [req.user.id]);
     const project = rows[0];

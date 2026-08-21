@@ -1,6 +1,9 @@
+import { createContext, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchJson } from '../lib/api';
 import type { BudgetSummaryRow, ProjectKpis } from '../types';
+
+export const DemoProjectContext = createContext<number | null>(null);
 
 interface MeResponse {
   userId: string;
@@ -10,10 +13,16 @@ interface MeResponse {
 }
 
 export function useCurrentProject() {
+  const demoProjectId = useContext(DemoProjectContext);
   const { data, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: () => fetchJson<MeResponse>('/api/me'),
+    enabled: demoProjectId === null, // never call the authenticated /api/me in demo mode
   });
+
+  if (demoProjectId !== null) {
+    return { projectId: demoProjectId, needsSetup: false, isLoading: false };
+  }
   return {
     projectId: data?.projectId,
     needsSetup: data?.needsSetup ?? false,

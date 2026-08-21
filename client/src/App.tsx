@@ -3,6 +3,7 @@ import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
+import { Demo } from './pages/Demo';
 import { Setup } from './pages/Setup';
 import { Overview } from './pages/Overview';
 import { Replenishments } from './pages/Replenishments';
@@ -21,6 +22,7 @@ function App() {
     <Routes>
       <Route path="login" element={<Login />} />
       <Route path="signup" element={<Signup />} />
+      <Route path="demo" element={<Demo />} />
       <Route element={<ProtectedRoute />}>
         <Route path="setup" element={<Setup />} />
         <Route element={<Layout />}>
