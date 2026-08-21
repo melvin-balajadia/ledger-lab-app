@@ -1,11 +1,20 @@
+import { supabase } from './supabaseClient';
+
 // Falls back to '' (same-origin, relative /api/... requests) when unset --
 // correct for Vercel, where vercel.json serves the client and API from one
 // domain. Local dev overrides this via client/.env's VITE_API_URL, since dev
 // runs Vite and Express as two separate processes on different ports.
 export const API_BASE = import.meta.env.VITE_API_URL || '';
 
+async function authHeaders(): Promise<HeadersInit> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', ...init });
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}${path}`, { ...init, headers: { ...headers, ...init?.headers } });
   if (!res.ok) {
     throw new Error(`${path} failed: ${res.status} ${res.statusText}`);
   }
@@ -13,10 +22,10 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
 }
 
 async function sendJson<T>(method: 'POST' | 'PATCH', path: string, body: unknown): Promise<T> {
+  const headers = await authHeaders();
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   const json = await res.json();
@@ -36,10 +45,10 @@ export function patchJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 export async function deleteRequest(path: string, body?: { reason?: string }): Promise<void> {
+  const headers = await authHeaders();
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'DELETE',
-    credentials: 'include',
-    ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    ...(body ? { headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : { headers }),
   });
   if (!res.ok) {
     const json = await res.json().catch(() => ({}));
@@ -48,7 +57,8 @@ export async function deleteRequest(path: string, body?: { reason?: string }): P
 }
 
 export async function postFormData<T>(path: string, formData: FormData): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', credentials: 'include', body: formData });
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: formData });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error ?? res.statusText);
   return json as T;
