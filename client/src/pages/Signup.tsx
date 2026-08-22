@@ -30,7 +30,12 @@ export function Signup() {
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-canvas px-4">
       <div className="flex w-full max-w-md flex-col gap-5 rounded-lg border border-rule bg-surface p-7 shadow-card sm:p-9">
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-[28px] font-semibold tracking-tight text-ink">
+          <h1 className="flex items-center gap-2.5 font-display text-[28px] font-semibold tracking-tight text-ink">
+            <span className="flex h-5 items-end gap-0.5" aria-hidden="true">
+              <span className="h-5 w-1 rounded-[1px] bg-accent" />
+              <span className="h-3 w-1 rounded-[1px] bg-accent-strong" />
+              <span className="h-1.5 w-1 rounded-[1px] bg-ink-faint" />
+            </span>
             LedgerLab
           </h1>
           <p className="text-sm text-ink-muted">
@@ -95,7 +100,7 @@ export function Signup() {
               type="submit"
               variant="primary"
               disabled={isSubmitting}
-              className="mt-1 justify-center"
+              className="mt-1 justify-center rounded-md!"
             >
               {isSubmitting ? "Creating account…" : "Create account"}
             </Button>
