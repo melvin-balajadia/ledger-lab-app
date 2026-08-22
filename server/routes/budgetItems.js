@@ -177,7 +177,7 @@ router.post('/:id/budget-items/:budgetItemId/revisions', async (req, res, next) 
     const amountBefore = itemRows[0].revised_budget;
 
     const { rows: nextNoRows } = await conn.query(
-      'SELECT COALESCE(MAX(revision_no), 0) + 1 AS nextNo FROM budget_revisions WHERE budget_item_id = ?',
+      'SELECT COALESCE(MAX(revision_no), 0) + 1 AS "nextNo" FROM budget_revisions WHERE budget_item_id = ?',
       [req.params.budgetItemId]
     );
     const { nextNo } = nextNoRows[0];

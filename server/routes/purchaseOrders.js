@@ -137,7 +137,7 @@ async function recomputePoStatus(conn, poId) {
   if (poRows.length === 0 || poRows[0].status === 'cancelled') return;
 
   const { rows: totalPaidRows } = await conn.query(
-    'SELECT COALESCE(SUM(amount_php), 0) AS totalPaid FROM po_payments WHERE purchase_order_id = ? AND voided_at IS NULL',
+    'SELECT COALESCE(SUM(amount_php), 0) AS "totalPaid" FROM po_payments WHERE purchase_order_id = ? AND voided_at IS NULL',
     [poId]
   );
   const { totalPaid } = totalPaidRows[0];

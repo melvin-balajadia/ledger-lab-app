@@ -702,3 +702,125 @@ INSERT INTO planning_lines (project_id, budget_item_id, code, depth, description
  (1, 2, '2.1', 2, NULL, 1),
  (1, 2, '2.2', 2, NULL, 1),
  (1, 3, '3.1', 2, NULL, 1);
+
+-- Dated disbursement activity. Without this, every commitment-side figure
+-- above renders fine but every disbursement-side widget (cost trend, weekly
+-- burn, cost breakdown, top suppliers, retention) has nothing to plot --
+-- the click-through demo needs at least one txn_date per fact table.
+--
+-- Every FK below is resolved by natural key (name / item_no / code), never
+-- by assumed SERIAL id -- this block may run against a demo DB whose ids
+-- have already drifted from a pristine load. ON CONFLICT / NOT EXISTS
+-- guards make the whole block safe to paste and re-run.
+DO $$
+DECLARE
+  v_supplier_hw    INTEGER;
+  v_supplier_steel INTEGER;
+  v_supplier_elec  INTEGER;
+  v_bi_1 INTEGER; v_bi_2 INTEGER; v_bi_3 INTEGER; v_bi_4 INTEGER;
+  v_pl_1 INTEGER; v_pl_3 INTEGER;
+  v_po_1 INTEGER; v_po_2 INTEGER; v_po_3 INTEGER;
+BEGIN
+  SELECT id INTO v_supplier_hw    FROM suppliers WHERE project_id = 1 AND name = 'Sample Hardware Supply Co.';
+  SELECT id INTO v_supplier_steel FROM suppliers WHERE project_id = 1 AND name = 'Sample Steel & Concrete Inc.';
+  SELECT id INTO v_bi_1 FROM budget_items WHERE project_id = 1 AND item_no = '1.0';
+  SELECT id INTO v_bi_2 FROM budget_items WHERE project_id = 1 AND item_no = '2.0';
+  SELECT id INTO v_bi_3 FROM budget_items WHERE project_id = 1 AND item_no = '3.0';
+  SELECT id INTO v_bi_4 FROM budget_items WHERE project_id = 1 AND item_no = '4.0';
+  SELECT id INTO v_pl_1 FROM planning_lines WHERE project_id = 1 AND code = '2.1';
+  SELECT id INTO v_pl_3 FROM planning_lines WHERE project_id = 1 AND code = '3.1';
+
+  INSERT INTO suppliers (project_id, name, normalized_name, category, is_active)
+  VALUES (1, 'Sample Electrical & Controls Inc.', 'SAMPLE ELECTRICAL & CONTROLS INC.', 'electrical', 1)
+  ON CONFLICT (normalized_name) DO NOTHING;
+  SELECT id INTO v_supplier_elec FROM suppliers WHERE project_id = 1 AND name = 'Sample Electrical & Controls Inc.';
+
+  INSERT INTO purchase_orders
+    (project_id, por_no, po_date, supplier_id, budget_item_id, planning_line_id, item_description, payment_terms, retention_pct, status)
+  VALUES
+   (1, 'PO-2026-001', '2026-02-05', v_supplier_steel, v_bi_2, v_pl_1, 'Civil works package', '30% DP / 70% Progress', NULL, 'partially_paid'),
+   (1, 'PO-2026-002', '2026-03-08', v_supplier_hw,    v_bi_3, v_pl_3, 'Refrigeration equipment', '20% DP / 70% Progress / 10% Retention', 0.10, 'partially_paid'),
+   (1, 'PO-2026-003', '2026-04-01', v_supplier_elec,  v_bi_4, NULL,   'Electrical & communications works', '50% DP / 50% Upon Delivery', NULL, 'partially_paid')
+  ON CONFLICT ON CONSTRAINT uk_por DO NOTHING;
+
+  SELECT id INTO v_po_1 FROM purchase_orders WHERE project_id = 1 AND por_no = 'PO-2026-001';
+  SELECT id INTO v_po_2 FROM purchase_orders WHERE project_id = 1 AND por_no = 'PO-2026-002';
+  SELECT id INTO v_po_3 FROM purchase_orders WHERE project_id = 1 AND por_no = 'PO-2026-003';
+
+  INSERT INTO po_payments (purchase_order_id, paid_on, payment_type, amount, voucher_no)
+  SELECT v.po_id, v.paid_on, v.payment_type, v.amount, v.voucher_no
+  FROM (VALUES
+    (v_po_1, '2026-03-05'::date, 'downpayment', 11550000.00, 'CV-2026-101'),
+    (v_po_1, '2026-05-18'::date, 'progress',     9625000.00, 'CV-2026-102'),
+    (v_po_1, '2026-07-22'::date, 'progress',     7700000.00, 'CV-2026-103'),
+    (v_po_2, '2026-03-20'::date, 'downpayment', 10240000.00, 'CV-2026-104'),
+    (v_po_2, '2026-06-12'::date, 'progress',    25600000.00, 'CV-2026-105'),
+    (v_po_3, '2026-04-10'::date, 'downpayment',  8900000.00, 'CV-2026-106'),
+    (v_po_3, '2026-08-05'::date, 'progress',     4450000.00, 'CV-2026-107')
+  ) AS v(po_id, paid_on, payment_type, amount, voucher_no)
+  WHERE NOT EXISTS (SELECT 1 FROM po_payments pp WHERE pp.voucher_no = v.voucher_no);
+
+  INSERT INTO replenishments
+    (project_id, txn_date, supplier_id, planning_line_id, budget_item_id, item_description, ref_no, ref_type, amount, needs_review)
+  SELECT 1, v.txn_date, v.supplier_id, v.planning_line_id, v.budget_item_id, v.item_description, v.ref_no, v.ref_type, v.amount, v.needs_review
+  FROM (VALUES
+    ('2026-03-10'::date, v_supplier_steel, NULL::int, v_bi_1, 'Site fencing materials',             'SI-1001', 'SI', 85000.00,  0),
+    ('2026-04-08'::date, v_supplier_hw,    NULL::int, v_bi_1, 'Temporary site office supplies',     'OR-1002', 'OR', 62500.00,  0),
+    ('2026-05-15'::date, v_supplier_steel, v_pl_1,    v_bi_2, 'Hand tools and consumables',         'SI-1003', 'SI', 45000.00,  0),
+    ('2026-06-02'::date, v_supplier_hw,    v_pl_1,    v_bi_2, 'Scaffolding rental',                 'OR-1004', 'OR', 120000.00, 0),
+    ('2026-07-01'::date, NULL::int,        NULL::int, v_bi_1, 'Miscellaneous site supplies',        'CI-1005', 'CI', 38000.00,  0),
+    ('2026-07-20'::date, v_supplier_steel, v_pl_3,    v_bi_3, 'Freight - small parts',               'SI-1006', 'SI', 55000.00,  0),
+    ('2026-08-05'::date, v_supplier_hw,    v_pl_1,    v_bi_2, 'Site utilities - water/electricity', 'BS-1007', 'BS', 41500.00,  0),
+    ('2026-08-15'::date, NULL::int,        NULL::int, v_bi_1, 'Petty cash replenishment - misc',    'OR-1008', 'OR', 27000.00,  1)
+  ) AS v(txn_date, supplier_id, planning_line_id, budget_item_id, item_description, ref_no, ref_type, amount, needs_review)
+  WHERE NOT EXISTS (SELECT 1 FROM replenishments r WHERE r.ref_no = v.ref_no);
+
+  INSERT INTO cash_advances
+    (project_id, txn_date, budget_item_id, planning_line_id, requested_by, purpose, amount, liquidated_amount, status)
+  SELECT 1, v.txn_date, v.budget_item_id, v.planning_line_id, v.requested_by, v.purpose, v.amount, v.liquidated_amount, v.status
+  FROM (VALUES
+    ('2026-03-25'::date, v_bi_1, NULL::int, 'Juan Dela Cruz', 'Site petty cash float', 50000.00, 50000.00, 'liquidated'),
+    ('2026-05-20'::date, v_bi_2, v_pl_1,    'Maria Santos',   'Local hauling advance', 80000.00, 80000.00, 'liquidated'),
+    ('2026-07-15'::date, v_bi_1, NULL::int, 'Juan Dela Cruz', 'Site petty cash float', 60000.00, 30000.00, 'partially_liquidated')
+  ) AS v(txn_date, budget_item_id, planning_line_id, requested_by, purpose, amount, liquidated_amount, status)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM cash_advances c
+     WHERE c.txn_date = v.txn_date AND c.requested_by = v.requested_by AND c.purpose = v.purpose
+  );
+
+  INSERT INTO additional_payments
+    (project_id, txn_date, payee, budget_item_id, planning_line_id, description, voucher_no, expense_type, amount)
+  SELECT 1, v.txn_date, v.payee, v_bi_3, v_pl_3, v.description, v.voucher_no, v.expense_type, v.amount
+  FROM (VALUES
+    ('2026-04-15'::date, 'Bureau of Customs',              'Import duty on refrigeration equipment', 'AP-2026-001', 'customs_duty', 950000.00),
+    ('2026-04-18'::date, 'Sample Freight Forwarders Inc.', 'Freight on refrigeration equipment',     'AP-2026-002', 'freight',       520000.00),
+    ('2026-04-22'::date, 'Sample Marine Insurance Co.',    'Marine insurance on shipment',            'AP-2026-003', 'insurance',     180000.00)
+  ) AS v(txn_date, payee, description, voucher_no, expense_type, amount)
+  WHERE NOT EXISTS (SELECT 1 FROM additional_payments a WHERE a.voucher_no = v.voucher_no);
+
+  INSERT INTO workers (project_id, last_name, first_name, full_name, position, daily_rate, date_hired, is_active)
+  SELECT 1, v.last_name, v.first_name, v.full_name, v.position, v.daily_rate, v.date_hired, 1
+  FROM (VALUES
+    ('Dela Cruz', 'Juan',  'Dela Cruz, Juan', 'Laborer', 650.00, '2026-01-15'::date),
+    ('Santos',    'Maria', 'Santos, Maria',   'Foreman', 850.00, '2026-01-15'::date)
+  ) AS v(last_name, first_name, full_name, position, daily_rate, date_hired)
+  WHERE NOT EXISTS (SELECT 1 FROM workers w WHERE w.project_id = 1 AND w.full_name = v.full_name);
+
+  INSERT INTO payroll_periods (project_id, label, period_start, period_end, status, total_amount)
+  VALUES
+   (1, 'Aug 03-09, 2026', '2026-08-03', '2026-08-09', 'paid', 33000.00),
+   (1, 'Aug 10-16, 2026', '2026-08-10', '2026-08-16', 'paid', 33000.00),
+   (1, 'Aug 17-23, 2026', '2026-08-17', '2026-08-23', 'paid', 33000.00)
+  ON CONFLICT ON CONSTRAINT uk_period DO NOTHING;
+
+  INSERT INTO payroll_entries (project_id, payroll_period_id, worker_id, planning_line_id, budget_item_id, amount)
+  SELECT 1, pp.id, w.id, v_pl_1, v_bi_2, v.amount
+  FROM (VALUES
+    ('Aug 03-09, 2026', 'Dela Cruz, Juan', 15000.00), ('Aug 03-09, 2026', 'Santos, Maria', 18000.00),
+    ('Aug 10-16, 2026', 'Dela Cruz, Juan', 15000.00), ('Aug 10-16, 2026', 'Santos, Maria', 18000.00),
+    ('Aug 17-23, 2026', 'Dela Cruz, Juan', 15000.00), ('Aug 17-23, 2026', 'Santos, Maria', 18000.00)
+  ) AS v(period_label, worker_name, amount)
+  JOIN payroll_periods pp ON pp.project_id = 1 AND pp.label = v.period_label
+  JOIN workers w ON w.project_id = 1 AND w.full_name = v.worker_name
+  ON CONFLICT ON CONSTRAINT uk_entry DO NOTHING;
+END $$;

@@ -21,12 +21,13 @@ export function useCurrentProject() {
   });
 
   if (demoProjectId !== null) {
-    return { projectId: demoProjectId, needsSetup: false, isLoading: false };
+    return { projectId: demoProjectId, needsSetup: false, isLoading: false, isDemo: true };
   }
   return {
     projectId: data?.projectId,
     needsSetup: data?.needsSetup ?? false,
     isLoading,
+    isDemo: false,
   };
 }
 

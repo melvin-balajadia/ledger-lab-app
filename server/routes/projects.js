@@ -70,7 +70,7 @@ router.get('/:id/cost-trend', async (req, res, next) => {
     // data, not the wall-clock date -- this is seeded historical data, so
     // "now" isn't necessarily where the activity actually ends.
     const { rows: maxDateRows } = await pool.query(
-      `SELECT MAX(d) AS maxDate FROM (
+      `SELECT MAX(d) AS "maxDate" FROM (
          SELECT MAX(period_end) AS d FROM payroll_periods WHERE project_id = ?
          UNION ALL
          SELECT MAX(txn_date) FROM replenishments WHERE project_id = ? AND voided_at IS NULL
@@ -221,7 +221,7 @@ router.get('/:id/top-suppliers', async (req, res, next) => {
   const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 10));
   try {
     const { rows: totalDisbursedRows } = await pool.query(
-      'SELECT COALESCE(SUM(total_disbursed), 0) AS totalDisbursed FROM v_budget_vs_actual WHERE project_id = ?',
+      'SELECT COALESCE(SUM(total_disbursed), 0) AS "totalDisbursed" FROM v_budget_vs_actual WHERE project_id = ?',
       [projectId]
     );
     const { totalDisbursed } = totalDisbursedRows[0];
@@ -266,7 +266,7 @@ router.get('/:id/weekly-burn', async (req, res, next) => {
 
   try {
     const { rows: maxDateRows } = await pool.query(
-      `SELECT MAX(d) AS maxDate FROM (
+      `SELECT MAX(d) AS "maxDate" FROM (
          SELECT MAX(period_end) AS d FROM payroll_periods WHERE project_id = ?
          UNION ALL
          SELECT MAX(txn_date) FROM replenishments WHERE project_id = ? AND voided_at IS NULL

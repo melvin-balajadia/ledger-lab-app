@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProjectSummary, useProjectKpis } from '../hooks/useProjectData';
+import { useCurrentProject, useProjectSummary, useProjectKpis } from '../hooks/useProjectData';
 import { API_BASE } from '../lib/api';
 import { useCostBreakdown, useCostTrend, useAlerts, useRetentionSummary, useVatSummary, useTopSuppliers } from '../hooks/useDashboardAnalytics';
 import { KpiCards } from '../components/KpiCards';
@@ -43,6 +43,7 @@ function Section({ show, children }: { children: React.ReactNode; show: boolean 
 
 export function Overview() {
   const navigate = useNavigate();
+  const { isDemo } = useCurrentProject();
   const summary = useProjectSummary();
   const kpis = useProjectKpis();
   const [trendMonths, setTrendMonths] = useState<'6' | '12' | '24'>('6');
@@ -146,7 +147,7 @@ export function Overview() {
             <BudgetTable
               rows={summary.data}
               onSelect={(row) => navigate(`/budget-items/${row.budget_item_id}`)}
-              onCreate={() => setShowNewBudgetItem(true)}
+              onCreate={isDemo ? undefined : () => setShowNewBudgetItem(true)}
             />
           </Section>
 
